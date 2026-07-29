@@ -1,0 +1,11 @@
+{
+  "name": "trafficvision-ai-workspace",
+  "version": "1.0.0",
+  "description": "TrafficVision AI - Smart Traffic Prediction & Congestion Management System",
+  "scripts": {
+    "start": "bash start.sh",
+    "start:python": "python3 start.py",
+    "backend": "npm --prefix backend start",
+    "frontend": "npm --prefix frontend run dev"
+  }
+}
