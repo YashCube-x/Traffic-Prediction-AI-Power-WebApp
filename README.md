@@ -1,114 +1,151 @@
-# TrafficVision AI: Smart Traffic Prediction & Congestion Management System
+# 🚦 TrafficVision AI — Smart Traffic Prediction & Congestion Management System
 
-![TrafficVision AI Architecture](docs/architecture_and_schema.md)
-
-**TrafficVision AI** is an advanced AI-powered urban traffic monitoring, congestion prediction, and route optimization platform. Designed for smart city traffic departments, transportation authorities, and urban mobility managers, it ingests high-frequency IoT sensor telemetry to forecast traffic bottlenecks, estimate trip delays, and recommend eco-friendly alternate routes.
+> **Milestone 1 (Week 1 & Week 2) Deliverables — System Architecture, Authentication Infrastructure & Live Telemetry Dashboard**
 
 ---
 
-## 📅 Week-Wise Milestone Roadmap
+## 📌 Executive Summary
 
-The project is structured into **8 Weeks (4 Milestones)** as outlined below:
-
-### 🟢 Milestone 1: Week 1 & 2 — Project Initialization, System Architecture & Core Setup
-- **Objectives & Architecture**: Defined system boundaries, microservices topology, and database schemas (PostgreSQL for users/roles, MongoDB for sensor telemetry, Redis for real-time cache).
-- **Landing Page & Authentication**: Implemented enterprise `LandingPage` with role-based authentication (`POST /api/v1/auth/login`), registration (`POST /api/v1/auth/register`), and 1-click Quick Demo logins for `ADMIN`, `OPERATOR`, and `COMMUTER`.
-- **Role-Based Access Control (RBAC)**: Customized dashboard navigation tab visibility and feature permissions per role.
-- **Live Monitoring Dashboard**: Built live vehicle density heatmap viewport, key system metrics bar, and road segment log tables.
-
-
-### 🟡 Milestone 2: Week 3 & 4 — Traffic Prediction & Route Optimization *(Current Status: Implemented)*
-- **Traffic Prediction Module**: Developed time-series AI congestion forecasting model endpoints (`/api/v1/traffic/predictions`) to predict hourly vehicle speeds, vehicle volume, peak-hour bottlenecks, and AI confidence scores.
-- **Route Optimization & Travel Estimation**: Implemented smart route calculator endpoints (`/api/v1/routes/optimize`) computing primary vs. alternate eco-bypass routes, travel delay penalties, fuel efficiency scores, and CO2 savings.
-- **Interactive UI Components**: Created `AIForecasting` and `RouteOptimizer` React components featuring interactive corridor selectors, timeline bar visualizers, origin-destination route cards, and segment-by-segment road condition breakdowns.
-
-### 🔵 Milestone 3: Week 5 & 6 — Smart Alerts, Analytics & AI Insights *(Current Status: Implemented)*
-- **Smart Alert System**: Incident reporting, emergency traffic notifications, accident delay warnings, and automated alert broadcast & resolution workflow (`/api/v1/alerts`).
-- **Analytics & Heatmaps**: City-wide congestion heatmap matrix, 24-hour peak vehicle load curves, road performance leaderboard, and PDF/CSV report exports (`/api/v1/analytics/overview`).
-- **Interactive UI Components**: Developed `AlertsManager` and `AnalyticsDashboard` React components with severity filtering, incident creation modals, zone density heatmaps, and leaderboard cards.
-
-
-### 🟣 Milestone 4: Week 7 & 8 — Testing, Dockerization & Cloud Deployment *(Upcoming)*
-- **End-to-End Testing**: Unit, integration, and load testing for high-throughput sensor streams.
-- **Containerization**: Docker Compose configuration for React Frontend, FastAPI Engine, Express Gateway, PostgreSQL, MongoDB, and Redis.
-- **Cloud Deployment**: Deployment scripts and guides for AWS / Azure cloud hosting.
+**TrafficVision AI** is an enterprise-grade AI-powered urban traffic monitoring and congestion management platform engineered for smart city traffic authorities and urban planners. During **Week 1 & Week 2**, the core foundation of the platform was successfully designed, architected, and built—encompassing a microservices topology, role-based authentication, live IoT telemetry monitoring, and a state-of-the-art dashboard interface.
 
 ---
 
-## 🏗️ Architecture & Database Specs
+## 🎯 Week 1 & Week 2 Completed Milestones
+
+### 🟢 Week 1: System Architecture, Microservices & Database Schema Design
+- **Microservices Topology**: Designed a scalable 3-tier architecture consisting of a React.js (Vite) Frontend, Express API Gateway, and FastAPI Core AI Service.
+- **Dual-Database Strategy**:
+  - **PostgreSQL**: Relational schema handling User Authentication, Role-Based Access Control (RBAC), and Audit Logs.
+  - **MongoDB**: High-throughput document store configured for IoT sensor telemetry and vehicle count time-series data.
+  - **Redis Cache**: Sub-millisecond caching layer for real-time sensor readouts.
+- **Security & Authorization**: Established JWT token-based authentication standards and password hashing pipeline (`bcrypt` / `Passlib`).
+
+### 🟢 Week 2: Enterprise UI, Role-Based Authentication & Live Monitoring Dashboard
+- **Together AI Design Language**: Implemented a modern dark-mode glassmorphic design system using CSS variables, custom typography, smooth micro-animations, and responsive viewports.
+- **Role-Based Access Control (RBAC)**:
+  - **Admin / Traffic Controller**: Full platform access, sensor configuration, system-wide alerts, and administrative metrics.
+  - **Field Operator**: Operational live status monitoring, segment logs, and field incident reporting.
+  - **City Commuter**: High-level traffic overview and eco-route viewports.
+- **1-Click Quick Demo Login**: Built interactive login modals with direct 1-click preset authentication for testing all three roles (`ADMIN`, `OPERATOR`, `COMMUTER`).
+- **Live Traffic Monitoring Dashboard**:
+  - Real-time IoT sensor telemetry metrics bar (Active Sensors, Congestion Index, Avg City Speed, Incident Status).
+  - Corridor Traffic Density viewport with status indicators (Low, Moderate, Heavy, Severe).
+  - Live Road Segment telemetry log table with status filtering.
+
+---
+
+## 🏗️ System Architecture & Data Flow
 
 ```
-                  +-----------------------------------+
-                  |   React.js Frontend Dashboard     |
-                  |  (Together AI Design Language)    |
-                  +-----------------+-----------------+
-                                    |
-                                    v
-                  +-----------------------------------+
-                  |         API Gateway               |
-                  |  (Auth Verification & Routing)    |
-                  +-----------------+-----------------+
-                                    |
-        +---------------------------+---------------------------+
-        |                           |                           |
-        v                           v                           v
-+---------------+           +---------------+           +---------------+
-| Auth Service  |           | Traffic       |           | Route & AI    |
-| (JWT / RBAC)  |           | Monitoring    |           | Prediction    |
-+-------+-------+           +-------+-------+           +-------+-------+
-        |                           |                           |
-        v                           v                           v
-+---------------+           +---------------+           +---------------+
-| PostgreSQL    |           | MongoDB &     |           | ML Inference  |
-| (Users & Roles|           | Redis Cache   |           | Engine        |
-+---------------+           +---------------+           +---------------+
+                           +-----------------------------------+
+                           |    React.js Frontend Dashboard    |
+                           |   (Together AI Design System)     |
+                           +-----------------+-----------------+
+                                             |
+                                     (HTTP / REST / JWT)
+                                             |
+                                             v
+                           +-----------------------------------+
+                           |       Express API Gateway         |
+                           |    (Port 2001 - Routing & Auth)   |
+                           +-----------------+-----------------+
+                                             |
+                  +--------------------------+--------------------------+
+                  |                                                     |
+                  v                                                     v
++-----------------------------------+                 +-----------------------------------+
+|      FastAPI Backend Engine       |                 |       PostgreSQL / MongoDB        |
+|    (Port 8000 - Telemetry & Auth) |                 |     (User RBAC & Telemetry DB)    |
++-----------------------------------+                 +-----------------------------------+
 ```
 
 ---
 
-## 🔌 API Endpoints Summary
+## 🔌 Milestone 1 Implemented API Endpoints
 
-| Service | Method | Endpoint | Description |
-| :--- | :--- | :--- | :--- |
-| **Health** | `GET` | `/api/v1/health` | Service status and readiness check |
-| **Traffic** | `GET` | `/api/v1/traffic/status` | Real-time vehicle density & active sensor overview |
-| **Prediction** | `GET` | `/api/v1/traffic/predictions` | Hourly speed predictions, peak warnings & bottleneck risk |
-| **Routes** | `POST` | `/api/v1/routes/optimize` | Calculates primary & alternate eco-routes with delay estimates |
+| Category | Method | Endpoint | Access Level | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Health** | `GET` | `/api/v1/health` | Public | System status and service health check |
+| **Auth** | `POST` | `/api/v1/auth/login` | Public | User login & JWT token issuance |
+| **Auth** | `POST` | `/api/v1/auth/register` | Public | New user registration |
+| **Auth** | `GET` | `/api/v1/auth/me` | Authenticated | Fetch authenticated user profile & role |
+| **Traffic** | `GET` | `/api/v1/traffic/status` | All Roles | Real-time vehicle density & active sensor telemetry |
 
 ---
 
-## 🚀 Quickstart & Setup Guide
+## 🛠️ Technology Stack (Week 1 & 2)
 
-### 1. Frontend Setup (React.js)
+- **Frontend**: React 18, Vite, Custom Vanilla CSS (Design Tokens, Glassmorphism), Lucide React Icons
+- **API Gateway**: Node.js, Express.js, CORS, Middleware Auth
+- **Core Backend**: Python 3.11, FastAPI, Pydantic v2, Uvicorn
+- **Databases & Cache**: PostgreSQL (Relational/Auth), MongoDB (Telemetry Logs), Redis
+- **Dev Tooling**: Python `pytest`, ESLint, Git
+
+---
+
+## 🚀 Quickstart & Local Setup Guide
+
+### 1. Prerequisites
+- **Node.js**: v18.x or higher
+- **Python**: v3.11 or higher
+
+### 2. Frontend Launch (React.js)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-The React frontend will start at `http://localhost:5173`.
+> The dashboard will be accessible at: `http://localhost:5173`
 
-### 2. Express Gateway Backend (Node.js)
+### 3. Backend API Gateway Launch (Node.js)
 ```bash
 cd backend
 npm install
 npm start
 ```
-The Express server will start on port `2001`.
+> Express Gateway running at: `http://localhost:2001`
 
-### 3. FastAPI Core AI Backend (Python)
+### 4. FastAPI Backend Engine Launch (Python)
 ```bash
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
-FastAPI documentation will be available at `http://localhost:8000/docs`.
+> Interactive Swagger API Documentation: `http://localhost:8000/docs`
 
 ---
 
-## 🛠️ Technology Stack
+## 📁 Repository Structure (Milestone 1)
 
-- **Frontend**: React.js, Vite, Vanilla CSS (Together AI Design Tokens), Lucide Icons
-- **Backend Core**: Python 3.11, FastAPI, Pydantic v2, Uvicorn
-- **API Gateway**: Node.js, Express.js, CORS
-- **Databases**: PostgreSQL (Relational/Auth), MongoDB (Telemetry Documents), Redis (Caching)
-- **AI/ML Libraries**: Scikit-Learn, Pandas, NumPy, TensorFlow / PyTorch
+```
+Traffic_Prediction/
+├── backend/
+│   ├── app/
+│   │   ├── api/          # REST Endpoint Routers (Auth, Health, Telemetry)
+│   │   ├── core/         # Security, JWT & Hashing Utilities
+│   │   ├── db/           # Database Connection Adapters
+│   │   ├── models/       # Pydantic Schemas & Data Transfer Objects
+│   │   └── main.py       # FastAPI Application Entrypoint
+│   ├── src/              # Express API Gateway Services
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/   # LandingPage, Auth Modals, Live Monitoring Dashboard
+│   │   ├── styles/       # Design System CSS (theme.css)
+│   │   ├── App.jsx       # Main App Component & RBAC Router
+│   │   └── main.jsx
+│   ├── index.html
+│   └── package.json
+└── README.md
+```
+
+---
+
+## 📋 Deliverable Verification Checklist (Week 1 & 2)
+
+- [x] Project Repository & Microservices Structure Initialized
+- [x] Database Schemas & Microservice Topology Designed
+- [x] JWT Authentication & Role-Based Access Control (RBAC) Implemented
+- [x] Glassmorphic Enterprise Landing Page & Quick-Demo Logins Built
+- [x] Real-time Traffic Telemetry & Corridor Density Dashboard Developed
+- [x] API Health & Telemetry Endpoints Operational
