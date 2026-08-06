@@ -1,0 +1,25 @@
+{
+  "features": [
+    "bias",
+    "hour",
+    "day_of_week",
+    "vehicle_count",
+    "historical_avg_speed_kmh"
+  ],
+  "weights": [
+    0.11339180581397332,
+    0.102135518198147,
+    0.13885884536356516,
+    -0.015683527832378644,
+    0.5187285610495936
+  ],
+  "mae": 4.57968996082375,
+  "supported_cities": [
+    "Bengaluru",
+    "Mumbai",
+    "Delhi NCR",
+    "Hyderabad",
+    "Chennai",
+    "Pune"
+  ]
+}

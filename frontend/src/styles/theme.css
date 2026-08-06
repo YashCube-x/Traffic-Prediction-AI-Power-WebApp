@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Design System Tokens derived from DESIGN-together.ai.md */
 
 :root {
@@ -207,28 +211,27 @@ body {
 }
 
 .navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-lg) var(--spacing-3xl);
+  padding: 12px 32px;
   background-color: var(--color-canvas-dark);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-hairline);
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
+  width: 100%;
+  gap: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .nav-brand {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-}
-
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .brand-badge {
@@ -247,7 +250,15 @@ body {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xl);
+  gap: 24px;
+}
+
+.nav-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .nav-link {
@@ -643,6 +654,211 @@ body {
     border-top: none;
   }
 }
+
+/* Dual-Tone Split Screen Login System matching reference design */
+.split-login-wrapper {
+  width: 100%;
+  max-width: 1040px;
+  margin: 40px auto;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface-card);
+}
+
+@media (min-width: 840px) {
+  .split-login-wrapper {
+    flex-direction: row;
+    min-height: 560px;
+  }
+}
+
+.split-login-left {
+  flex: 1;
+  background: radial-gradient(circle at 30% 30%, #112035 0%, #080d19 100%);
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.split-login-left::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(200, 246, 249, 0.12) 0%, rgba(252, 76, 2, 0.05) 50%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.split-illustration-img {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  z-index: 2;
+  transition: transform 0.3s ease;
+}
+
+.split-illustration-img:hover {
+  transform: scale(1.02);
+}
+
+.split-login-right {
+  flex: 1.1;
+  background: linear-gradient(135deg, #12192c 0%, #0d1222 100%);
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Slanted Angle accent bar separating left & right panels */
+@media (min-width: 840px) {
+  .split-login-right::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -24px;
+    bottom: 0;
+    width: 48px;
+    background: linear-gradient(135deg, #12192c 0%, #0d1222 100%);
+    transform: skewX(-5deg);
+    z-index: 1;
+  }
+}
+
+.split-floating-card {
+  width: 100%;
+  max-width: 380px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 28px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+  position: relative;
+  z-index: 3;
+  color: #0f172a;
+}
+
+.split-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.split-card-header .title-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #fc4c02;
+  text-transform: uppercase;
+}
+
+.split-card-header .help-link {
+  font-size: 12px;
+  color: #64748b;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.split-card-header .help-link:hover {
+  color: #fc4c02;
+}
+
+.split-input-field {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.split-input-field:focus {
+  outline: none;
+  border-color: #0b1426;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(11, 20, 38, 0.1);
+}
+
+.split-signin-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  background: #0b1426;
+  color: #ffffff;
+  border: none;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+  box-shadow: 0 4px 14px rgba(11, 20, 38, 0.25);
+}
+
+.split-signin-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(11, 20, 38, 0.35);
+}
+
+.split-footer-text {
+  margin-top: 20px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+  z-index: 3;
+}
+
+.split-footer-text a {
+  color: var(--accent-orange);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.split-footer-text a:hover {
+  text-decoration: underline;
+}
+
+/* Custom Route Hover Tooltip */
+.leaflet-tooltip.route-hover-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.leaflet-tooltip.route-hover-tooltip::before {
+  display: none !important;
+}
+
+
 
 
 

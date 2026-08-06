@@ -1,5 +1,8 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.db.session import engine, Base
 from app.models import user
+from app.api import health, auth, traffic, prediction, route_opt, alerts, analytics
 
 # Auto-create tables in Neon DB on startup
 try:

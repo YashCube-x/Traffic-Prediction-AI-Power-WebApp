@@ -1,0 +1,43 @@
+{
+  "model_name": "TrafficVision AI - Bengaluru Urban Mobility Forecaster",
+  "target_city": "Bengaluru",
+  "dataset_file": "bengaluru_traffic_data.csv",
+  "total_records": 3500,
+  "mae_kmh": 3.69,
+  "rmse_kmh": 4.78,
+  "accuracy_r2": "52.02%",
+  "engineered_features": [
+    "bias",
+    "hour",
+    "day_of_week",
+    "vehicle_count",
+    "historical_avg_speed",
+    "is_tech_peak",
+    "tech_peak_interaction",
+    "density_ratio",
+    "rain_impact",
+    "is_weekend"
+  ],
+  "weights": [
+    0.064499,
+    0.060472,
+    0.089541,
+    -0.009657,
+    0.454068,
+    0.034916,
+    0.039778,
+    0.04993,
+    0.0458,
+    0.053248
+  ],
+  "key_bengaluru_corridors": [
+    "Central Silk Board Junction",
+    "Hebbal Flyover to Airport Expressway",
+    "Outer Ring Road (Marathahalli - Bellandur)",
+    "Tin Factory & K.R. Puram Junction",
+    "M.G. Road & Trinity Circle Corridor",
+    "Whitefield ITPB Main Road",
+    "Goraguntepalya Tumkur Road Junction",
+    "Electronic City Elevated Expressway"
+  ]
+}

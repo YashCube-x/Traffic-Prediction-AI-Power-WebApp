@@ -58,7 +58,7 @@ def main():
 
     print("\n==========================================================")
     print("✨ TrafficVision AI is running!")
-    print("🌐 Frontend Dashboard:  http://localhost:5173")
+    print("🌐 Frontend Dashboard:  http://localhost:2000")
     print("🔌 Express API Gateway: http://localhost:2001")
     print("🐍 FastAPI AI Docs:     http://localhost:8000/docs (if active)")
     print("Press Ctrl+C to stop all servers.")

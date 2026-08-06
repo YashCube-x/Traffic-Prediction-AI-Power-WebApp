@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import './styles/theme.css';
-import { Sun, Moon, User as UserIcon, LogOut, Plus, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp } from 'lucide-react';
+import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp } from 'lucide-react';
 import LandingPage from './components/LandingPage';
+import LoginPage from './components/LoginPage';
 import AIForecasting from './components/AIForecasting';
 import RouteOptimizer from './components/RouteOptimizer';
 import AlertsManager from './components/AlertsManager';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 
 export default function App() {
+  const navigate = useNavigate();
   const [userSession, setUserSession] = useState(null);
   const [trafficData, setTrafficData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +26,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Fetch mock traffic status from Node.js Express backend
+    // Fetch traffic status from Express backend
     fetch('http://localhost:2001/api/v1/traffic/status')
       .then((res) => res.json())
       .then((data) => {
@@ -31,7 +34,7 @@ export default function App() {
         setLoading(false);
       })
       .catch((err) => {
-        console.warn('Backend server not responding yet, loading static fallback:', err);
+        console.warn('Backend server fallback:', err);
         setTrafficData({
           total_active_sensors: 42,
           avg_city_speed_kmh: 25.9,
@@ -64,288 +67,315 @@ export default function App() {
       });
   }, []);
 
-  const handleLogout = () => {
-    setUserSession(null);
-    setActiveTab('dashboard');
+  const handleLoginSuccess = (user) => {
+    setUserSession(user);
+    if (user.role === 'COMMUTER') setActiveTab('routes');
+    else setActiveTab('dashboard');
   };
 
-  // If user is not logged in, show Landing Page
-  if (!userSession) {
-    return <LandingPage onLoginSuccess={(user) => {
-      setUserSession(user);
-      if (user.role === 'COMMUTER') setActiveTab('routes');
-      else setActiveTab('dashboard');
-    }} />;
-  }
+  const handleLogout = () => {
+    setUserSession(null);
+    navigate('/');
+  };
 
-  const userRole = userSession.role || 'COMMUTER';
+  const userRole = userSession?.role || 'COMMUTER';
 
   return (
-    <div className="app-container">
-      {/* Brand Chrome Line Header */}
-      <div className="brand-chrome-bar"></div>
+    <Routes>
+      {/* 1. Landing Page Route */}
+      <Route path="/" element={<LandingPage />} />
 
-      {/* Top Navbar */}
-      <nav className="navbar">
-        <div className="nav-brand">
-          <span className="mono-eyebrow" style={{ fontSize: '14px', fontWeight: '700' }}>
-            TRAFFICVISION <span style={{ color: 'var(--accent-orange)' }}>AI</span>
-          </span>
-          <span className="brand-badge" style={{ background: 'rgba(52, 211, 153, 0.15)', color: 'var(--status-low)', borderColor: 'var(--status-low)' }}>
-            {userRole} PORTAL
-          </span>
-        </div>
+      {/* 2. Dedicated 100vh Light UI Login Route */}
+      <Route
+        path="/login"
+        element={<LoginPage onLoginSuccess={handleLoginSuccess} initialRegister={false} />}
+      />
 
-        <div className="nav-links">
-          {/* Tab Filtering based on User Role */}
-          {(userRole === 'ADMIN' || userRole === 'OPERATOR' || userRole === 'COMMUTER') && (
-            <button 
-              className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dashboard')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Activity size={15} /> Live Dashboard
-            </button>
-          )}
+      {/* 3. Dedicated 100vh Light UI Register Route */}
+      <Route
+        path="/register"
+        element={<LoginPage onLoginSuccess={handleLoginSuccess} initialRegister={true} />}
+      />
 
-          {(userRole === 'ADMIN' || userRole === 'OPERATOR') && (
-            <button 
-              className={`nav-link ${activeTab === 'predictions' ? 'active' : ''}`}
-              onClick={() => setActiveTab('predictions')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <TrendingUp size={15} /> Traffic Forecasting
-            </button>
-          )}
+      {/* 4. Authenticated Portal Dashboard Route */}
+      <Route
+        path="/dashboard"
+        element={
+          userSession ? (
+            <div className="app-container">
+              {/* Brand Chrome Line Header */}
+              <div className="brand-chrome-bar"></div>
 
-          {(userRole === 'ADMIN' || userRole === 'OPERATOR' || userRole === 'COMMUTER') && (
-            <button 
-              className={`nav-link ${activeTab === 'routes' ? 'active' : ''}`}
-              onClick={() => setActiveTab('routes')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Navigation size={15} /> Route Optimizer
-            </button>
-          )}
-
-          {(userRole === 'ADMIN' || userRole === 'OPERATOR') && (
-            <button 
-              className={`nav-link ${activeTab === 'alerts' ? 'active' : ''}`}
-              onClick={() => setActiveTab('alerts')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <AlertTriangle size={15} /> Incident Control
-            </button>
-          )}
-
-          {userRole === 'ADMIN' && (
-            <button 
-              className={`nav-link ${activeTab === 'analytics' ? 'active' : ''}`}
-              onClick={() => setActiveTab('analytics')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <BarChart2 size={15} /> Analytics
-            </button>
-          )}
-        </div>
-
-        <div className="nav-user-actions">
-          {/* Theme Toggler Button */}
-          <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle Light/Dark Theme" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            {themeMode === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-            {themeMode === 'dark' ? 'Light' : 'Dark'}
-          </button>
-
-          {/* User Profile Pill */}
-          <div className="user-role-pill" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <UserIcon size={14} style={{ color: 'var(--color-on-dark)' }} />
-            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-on-dark)' }}>
-              {userSession.full_name || userSession.email.split('@')[0]}
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 'bold',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                background: userRole === 'ADMIN' ? 'var(--accent-orange)' : userRole === 'OPERATOR' ? 'var(--accent-mint)' : 'var(--accent-periwinkle)',
-                color: userRole === 'OPERATOR' ? '#000' : '#fff'
-              }}
-            >
-              {userRole}
-            </span>
-          </div>
-
-          {/* Sign Out Button */}
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid var(--status-severe)',
-              color: 'var(--status-severe)',
-              fontFamily: 'var(--font-display)',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <LogOut size={14} /> Sign Out
-          </button>
-        </div>
-      </nav>
-
-      {/* Hero Header */}
-      <header className="hero-band">
-        <div className="hero-grid">
-          <div>
-            <span className="mono-eyebrow">
-              {activeTab === 'dashboard' && `Traffic & Congestion Dashboard`}
-              {activeTab === 'predictions' && `Traffic Forecasting & Bottleneck Prediction`}
-              {activeTab === 'routes' && `Smart Route Optimization & Travel Time`}
-              {activeTab === 'alerts' && `Incident Management & Dispatch`}
-              {activeTab === 'analytics' && `Traffic Analytics & Heatmaps`}
-            </span>
-            <h1 className="display-title" style={{ marginTop: '8px' }}>
-              Urban Traffic Management System
-            </h1>
-            <p className="display-subtitle" style={{ marginTop: '8px' }}>
-              Logged in as <strong style={{ color: 'var(--accent-mint-text)' }}>{userSession.email}</strong> ({userRole} Portal). Monitoring city mobility and optimizing vehicle flow.
-            </p>
-          </div>
-          {userRole === 'ADMIN' && (
-            <div style={{ textAlign: 'right' }}>
-              <button className="button-mint">
-                + Add Sensor Node
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="main-content animate-fade-in" key={activeTab}>
-        {activeTab === 'dashboard' && (
-          <>
-            {/* Key Metrics Row */}
-            <section className="stats-grid">
-              <div className="stat-card mint-tint">
-                <span className="mono-eyebrow">Active Sensor Nodes</span>
-                <div className="stat-value" style={{ color: 'var(--accent-mint-text)' }}>
-                  {loading ? '...' : trafficData?.total_active_sensors}
+              {/* Top Navbar */}
+              <nav className="navbar">
+                <div className="nav-brand">
+                  <span className="mono-eyebrow" style={{ fontSize: '15px', fontWeight: '800', tracking: '-0.02em' }}>
+                    TRAFFICVISION <span style={{ color: 'var(--accent-orange)' }}>AI</span>
+                  </span>
+                  <span className="brand-badge" style={{ background: 'rgba(52, 211, 153, 0.15)', color: 'var(--status-low)', borderColor: 'var(--status-low)' }}>
+                    {userRole} PORTAL
+                  </span>
                 </div>
-                <span className="mono-label">Operational Network</span>
-              </div>
 
-              <div className="stat-card">
-                <span className="mono-eyebrow">City Average Speed</span>
-                <div className="stat-value">
-                  {loading ? '...' : `${trafficData?.avg_city_speed_kmh} km/h`}
+                <div className="nav-links">
+                  {(userRole === 'ADMIN' || userRole === 'OPERATOR' || userRole === 'COMMUTER') && (
+                    <button 
+                      className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('dashboard')}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Activity size={15} /> Live Dashboard
+                    </button>
+                  )}
+
+                  {(userRole === 'ADMIN' || userRole === 'OPERATOR') && (
+                    <button 
+                      className={`nav-link ${activeTab === 'predictions' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('predictions')}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <TrendingUp size={15} /> Traffic Forecasting
+                    </button>
+                  )}
+
+                  {(userRole === 'ADMIN' || userRole === 'OPERATOR' || userRole === 'COMMUTER') && (
+                    <button 
+                      className={`nav-link ${activeTab === 'routes' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('routes')}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Navigation size={15} /> Route Optimizer
+                    </button>
+                  )}
+
+                  {(userRole === 'ADMIN' || userRole === 'OPERATOR') && (
+                    <button 
+                      className={`nav-link ${activeTab === 'alerts' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('alerts')}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <AlertTriangle size={15} /> Incident Control
+                    </button>
+                  )}
+
+                  {userRole === 'ADMIN' && (
+                    <button 
+                      className={`nav-link ${activeTab === 'analytics' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('analytics')}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <BarChart2 size={15} /> Analytics
+                    </button>
+                  )}
                 </div>
-                <span className="mono-label">Target: 35.0 km/h</span>
-              </div>
 
-              <div className="stat-card">
-                <span className="mono-eyebrow">Active Congestion Alerts</span>
-                <div className="stat-value" style={{ color: 'var(--accent-orange)' }}>
-                  {loading ? '...' : trafficData?.active_congestion_alerts}
+                {/* Right Control Actions - Single Horizontal Row */}
+                <div className="nav-user-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle Light/Dark Theme" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px' }}>
+                    {themeMode === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                    {themeMode === 'dark' ? 'Light' : 'Dark'}
+                  </button>
+
+                  <div className="user-role-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '32px' }}>
+                    <UserIcon size={14} style={{ color: 'var(--color-on-dark)' }} />
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-on-dark)', whiteSpace: 'nowrap' }}>
+                      {userSession.full_name || userSession.email.split('@')[0]}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: userRole === 'ADMIN' ? 'var(--accent-orange)' : userRole === 'OPERATOR' ? 'var(--accent-mint)' : 'var(--accent-periwinkle)',
+                        color: userRole === 'OPERATOR' ? '#000' : '#fff'
+                      }}
+                    >
+                      {userRole}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      height: '32px',
+                      padding: '0 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      color: '#ef4444',
+                      fontFamily: 'var(--font-display)',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <LogOut size={14} /> Sign Out
+                  </button>
                 </div>
-                <span className="mono-label">Active Bottlenecks</span>
-              </div>
+              </nav>
 
-              <div className="stat-card">
-                <span className="mono-eyebrow">System Health</span>
-                <div className="stat-value" style={{ color: '#34d399', fontSize: '24px' }}>
-                  ● {loading ? 'Checking...' : trafficData?.system_status}
-                </div>
-                <span className="mono-label">All Systems Online</span>
-              </div>
-            </section>
-
-            {/* Dashboard Panels */}
-            <div className="dashboard-grid">
-              {/* Live Traffic Map Viewport */}
-              <div className="panel-card">
-                <div className="panel-header">
+              {/* Hero Header */}
+              <header className="hero-band">
+                <div className="hero-grid">
                   <div>
-                    <span className="mono-eyebrow">LIVE TELEMETRY VIEWPORT</span>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600' }}>City Road Density Heatmap</h3>
+                    <span className="mono-eyebrow">
+                      {activeTab === 'dashboard' && `Traffic & Congestion Dashboard`}
+                      {activeTab === 'predictions' && `Traffic Forecasting & Bottleneck Prediction`}
+                      {activeTab === 'routes' && `Smart Route Optimization & Travel Time`}
+                      {activeTab === 'alerts' && `Incident Management & Dispatch`}
+                      {activeTab === 'analytics' && `Traffic Analytics & Heatmaps`}
+                    </span>
+                    <h1 className="display-title" style={{ marginTop: '8px' }}>
+                      Urban Traffic Management System
+                    </h1>
+                    <p className="display-subtitle" style={{ marginTop: '8px' }}>
+                      Logged in as <strong style={{ color: 'var(--accent-mint-text)' }}>{userSession.email}</strong> ({userRole} Portal). Monitoring city mobility and optimizing vehicle flow.
+                    </p>
                   </div>
-                  <span className="mono-label">UPDATE: REALTIME (30s)</span>
+                  {userRole === 'ADMIN' && (
+                    <div style={{ textAlign: 'right' }}>
+                      <button className="button-mint">
+                        + Add Sensor Node
+                      </button>
+                    </div>
+                  )}
                 </div>
+              </header>
 
-                <div className="map-viewport">
-                  <div className="map-grid-overlay"></div>
-                  
-                  {/* Animated Map Node Indicators */}
-                  <div className="sensor-node-dot" style={{ top: '35%', left: '42%', color: 'var(--status-heavy)' }} title="M.G. Road - HEAVY"></div>
-                  <div className="sensor-node-dot" style={{ top: '20%', left: '68%', color: 'var(--status-severe)' }} title="Hebbal Flyover - SEVERE"></div>
-                  <div className="sensor-node-dot" style={{ top: '70%', left: '50%', color: 'var(--status-moderate)' }} title="Silk Board Junction - MODERATE"></div>
-                  <div className="sensor-node-dot" style={{ top: '45%', left: '80%', color: 'var(--status-low)' }} title="Indiranagar - LOW"></div>
+              {/* Main Content */}
+              <main className="main-content animate-fade-in" key={activeTab}>
+                {activeTab === 'dashboard' && (
+                  <>
+                    {/* Key Metrics Row */}
+                    <section className="stats-grid">
+                      <div className="stat-card mint-tint">
+                        <span className="mono-eyebrow">Active Sensor Nodes</span>
+                        <div className="stat-value" style={{ color: 'var(--accent-mint-text)' }}>
+                          {loading ? '...' : trafficData?.total_active_sensors}
+                        </div>
+                        <span className="mono-label">Operational Network</span>
+                      </div>
 
-                  <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: 'rgba(1, 1, 32, 0.85)', padding: '8px 16px', borderRadius: '4px', border: '1px solid var(--color-hairline)' }}>
-                    <span className="mono-label" style={{ color: '#fff' }}>📍 Live GIS Simulation Viewport</span>
-                  </div>
-                </div>
-              </div>
+                      <div className="stat-card">
+                        <span className="mono-eyebrow">City Average Speed</span>
+                        <div className="stat-value">
+                          {loading ? '...' : `${trafficData?.avg_city_speed_kmh} km/h`}
+                        </div>
+                        <span className="mono-label">Target: 35.0 km/h</span>
+                      </div>
 
-              {/* Sensor Telemetry List */}
-              <div className="panel-card">
-                <div className="panel-header">
-                  <div>
-                    <span className="mono-eyebrow">FEED STREAM</span>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Road Segment Logs</h3>
-                  </div>
-                </div>
+                      <div className="stat-card">
+                        <span className="mono-eyebrow">Active Congestion Alerts</span>
+                        <div className="stat-value" style={{ color: 'var(--accent-orange)' }}>
+                          {loading ? '...' : trafficData?.active_congestion_alerts}
+                        </div>
+                        <span className="mono-label">Active Bottlenecks</span>
+                      </div>
 
-                <div className="table-responsive-wrapper">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Road Segment</th>
-                        <th>Density</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {trafficData?.recent_telemetry?.map((sensor) => (
-                        <tr key={sensor.sensor_id}>
-                          <td>
-                            <div style={{ fontWeight: '500' }}>{sensor.location.road_name}</div>
-                            <span className="mono-label" style={{ fontSize: '10px' }}>{sensor.sensor_id}</span>
-                          </td>
-                          <td>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontWeight: '600' }}>
-                              {sensor.metrics.vehicle_count} vh
-                            </div>
-                            <span className="mono-label" style={{ fontSize: '10px' }}>
-                              {sensor.metrics.avg_speed_kmh} km/h
-                            </span>
-                          </td>
-                          <td>
-                            <span className={`status-badge ${sensor.metrics.congestion_level}`}>
-                              {sensor.metrics.congestion_level}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                      <div className="stat-card">
+                        <span className="mono-eyebrow">System Health</span>
+                        <div className="stat-value" style={{ color: '#34d399', fontSize: '24px' }}>
+                          ● {loading ? 'Checking...' : trafficData?.system_status}
+                        </div>
+                        <span className="mono-label">All Systems Online</span>
+                      </div>
+                    </section>
+
+                    {/* Dashboard Panels */}
+                    <div className="dashboard-grid">
+                      <div className="panel-card">
+                        <div className="panel-header">
+                          <div>
+                            <span className="mono-eyebrow">LIVE TELEMETRY VIEWPORT</span>
+                            <h3 style={{ fontSize: '18px', fontWeight: '600' }}>City Road Density Heatmap</h3>
+                          </div>
+                          <span className="mono-label">UPDATE: REALTIME (30s)</span>
+                        </div>
+
+                        <div className="map-viewport">
+                          <div className="map-grid-overlay"></div>
+                          
+                          <div className="sensor-node-dot" style={{ top: '35%', left: '42%', color: 'var(--status-heavy)' }} title="M.G. Road - HEAVY"></div>
+                          <div className="sensor-node-dot" style={{ top: '20%', left: '68%', color: 'var(--status-severe)' }} title="Hebbal Flyover - SEVERE"></div>
+                          <div className="sensor-node-dot" style={{ top: '70%', left: '50%', color: 'var(--status-moderate)' }} title="Silk Board Junction - MODERATE"></div>
+                          <div className="sensor-node-dot" style={{ top: '45%', left: '80%', color: 'var(--status-low)' }} title="Indiranagar - LOW"></div>
+
+                          <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: 'rgba(1, 1, 32, 0.85)', padding: '8px 16px', borderRadius: '4px', border: '1px solid var(--color-hairline)' }}>
+                            <span className="mono-label" style={{ color: '#fff' }}>📍 Live GIS Simulation Viewport</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="panel-card">
+                        <div className="panel-header">
+                          <div>
+                            <span className="mono-eyebrow">FEED STREAM</span>
+                            <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Sensor Telemetry Nodes</h3>
+                          </div>
+                        </div>
+                        <div className="table-responsive-wrapper" style={{ marginTop: '12px' }}>
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>SENSOR ID</th>
+                                <th>LOCATION</th>
+                                <th>VEHICLES / SPEED</th>
+                                <th>STATUS</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {trafficData?.recent_telemetry?.map((sensor) => (
+                                <tr key={sensor.sensor_id}>
+                                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--accent-mint-text)' }}>
+                                    {sensor.sensor_id}
+                                  </td>
+                                  <td>
+                                    <div style={{ fontWeight: '600' }}>{sensor.location.road_name}</div>
+                                    <span className="mono-label" style={{ fontSize: '10px' }}>{sensor.location.zone_id}</span>
+                                  </td>
+                                  <td>
+                                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: '600' }}>
+                                      {sensor.metrics.vehicle_count} vh
+                                    </div>
+                                    <span className="mono-label" style={{ fontSize: '10px' }}>
+                                      {sensor.metrics.avg_speed_kmh} km/h
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className={`status-badge ${sensor.metrics.congestion_level}`}>
+                                      {sensor.metrics.congestion_level}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 'predictions' && <AIForecasting />}
+                {activeTab === 'routes' && <RouteOptimizer />}
+                {activeTab === 'alerts' && <AlertsManager userSession={userSession} />}
+                {activeTab === 'analytics' && <AnalyticsDashboard />}
+              </main>
             </div>
-          </>
-        )}
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
 
-        {activeTab === 'predictions' && <AIForecasting />}
-        {activeTab === 'routes' && <RouteOptimizer />}
-        {activeTab === 'alerts' && <AlertsManager />}
-        {activeTab === 'analytics' && <AnalyticsDashboard />}
-      </main>
-    </div>
+      {/* Catch-all Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

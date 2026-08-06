@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { verifyToken, requireRoles } = require('../middleware/auth');
 
 let MOCK_ALERTS = [
   {
@@ -52,11 +53,13 @@ let MOCK_ALERTS = [
   }
 ];
 
+// GET /alerts — Accessible to all logged in users
 router.get('/alerts', (req, res) => {
   res.json(MOCK_ALERTS);
 });
 
-router.post('/alerts', (req, res) => {
+// POST /alerts — Restricted to ADMIN and OPERATOR roles
+router.post('/alerts', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), (req, res) => {
   const newAlert = {
     alert_id: `ALT-2026-00${MOCK_ALERTS.length + 1}`,
     title: req.body.title || "Unspecified Traffic Incident",
@@ -73,7 +76,8 @@ router.post('/alerts', (req, res) => {
   res.status(201).json(newAlert);
 });
 
-router.patch('/alerts/:id/resolve', (req, res) => {
+// PATCH /alerts/:id/resolve — Restricted to ADMIN and OPERATOR roles
+router.patch('/alerts/:id/resolve', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), (req, res) => {
   const alertId = req.params.id;
   const alert = MOCK_ALERTS.find(a => a.alert_id === alertId);
   if (alert) {

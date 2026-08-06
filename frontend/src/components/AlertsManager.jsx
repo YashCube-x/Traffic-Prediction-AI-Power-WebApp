@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function AlertsManager() {
+export default function AlertsManager({ userSession }) {
   const [alerts, setAlerts] = useState([]);
   const [filterSeverity, setFilterSeverity] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
@@ -14,6 +14,8 @@ export default function AlertsManager() {
   const [formCategory, setFormCategory] = useState('ACCIDENT');
   const [formDesc, setFormDesc] = useState('');
   const [formDelay, setFormDelay] = useState(15);
+
+  const token = userSession?.access_token;
 
   const fetchAlerts = () => {
     setLoading(true);
@@ -84,13 +86,21 @@ export default function AlertsManager() {
   }, []);
 
   const handleResolve = (alertId) => {
-    fetch(`http://localhost:2001/api/v1/alerts/${alertId}/resolve`, { method: 'PATCH' })
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    fetch(`http://localhost:2001/api/v1/alerts/${alertId}/resolve`, { method: 'PATCH', headers })
+      .then((res) => {
+        if (!res.ok) throw new Error('Unauthorized / Error');
+        return res.json();
+      })
       .then(() => {
         setAlerts((prev) =>
           prev.map((a) => (a.alert_id === alertId ? { ...a, is_resolved: true } : a))
         );
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Failed to resolve alert:', err);
         setAlerts((prev) =>
           prev.map((a) => (a.alert_id === alertId ? { ...a, is_resolved: true } : a))
         );
@@ -109,18 +119,25 @@ export default function AlertsManager() {
       estimated_delay_mins: parseInt(formDelay, 10) || 10
     };
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     fetch('http://localhost:2001/api/v1/alerts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload)
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Unauthorized / Failed to create alert');
+        return res.json();
+      })
       .then((newAlert) => {
         setAlerts((prev) => [newAlert, ...prev]);
         setShowModal(false);
         resetForm();
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Failed to create alert on backend:', err);
         const localAlert = {
           alert_id: `ALT-2026-00${alerts.length + 1}`,
           ...payload,
@@ -154,9 +171,29 @@ export default function AlertsManager() {
           <h2 style={{ fontSize: '22px', fontWeight: '600', marginTop: '4px' }}>Real-Time Traffic Incident Command</h2>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--accent-orange)',
+              color: '#ffffff',
+              fontFamily: 'var(--font-display)',
+              fontSize: '12px',
+              fontWeight: '700',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(252, 76, 2, 0.3)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            + Log New Traffic Incident
+          </button>
           <button className="button-mint" onClick={() => setShowModal(true)}>
-            + Broadcast Emergency Alert
+            📡 Broadcast Emergency Alert
           </button>
         </div>
       </div>
@@ -266,109 +303,244 @@ export default function AlertsManager() {
 
       {/* Broadcast Alert Modal Form */}
       {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div className="panel-card" style={{ maxWidth: '520px', width: '100%', border: '1px solid var(--accent-orange)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Broadcast Traffic Alert</h3>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}>×</button>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div className="panel-card" style={{
+            maxWidth: '540px',
+            width: '100%',
+            border: '2px solid var(--accent-orange)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+            padding: '24px',
+            borderRadius: 'var(--radius-lg)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--color-hairline)' }}>
+              <div>
+                <span className="mono-eyebrow" style={{ color: 'var(--accent-orange)' }}>🚨 EMERGENCY INCIDENT COMMAND</span>
+                <h3 style={{ fontSize: '20px', fontWeight: '700', marginTop: '2px' }}>Broadcast Traffic Alert</h3>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: 'var(--color-surface-dark-soft)',
+                  border: '1px solid var(--color-hairline)',
+                  color: 'var(--color-on-dark)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleCreateAlert} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handleCreateAlert} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <span className="mono-label">ALERT TITLE:</span>
+                <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>ALERT TITLE:</span>
                 <input
                   type="text"
                   required
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="e.g. Tanker Breakdown near Flyover"
-                  style={{ width: '100%', padding: '8px 12px', marginTop: '4px', borderRadius: '4px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: '#fff' }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--color-surface-dark-soft)',
+                    border: '1px solid var(--color-hairline)',
+                    color: 'var(--color-on-dark)',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <span className="mono-label">LOCATION:</span>
+                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>LOCATION:</span>
                   <input
                     type="text"
                     required
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                     placeholder="e.g. MG Road Junction"
-                    style={{ width: '100%', padding: '8px 12px', marginTop: '4px', borderRadius: '4px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: '#fff' }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--color-surface-dark-soft)',
+                      border: '1px solid var(--color-hairline)',
+                      color: 'var(--color-on-dark)',
+                      fontSize: '14px',
+                      fontWeight: '600'
+                    }}
                   />
                 </div>
+
                 <div>
-                  <span className="mono-label">ZONE ID:</span>
+                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>ZONE ID:</span>
                   <select
                     value={formZone}
                     onChange={(e) => setFormZone(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', marginTop: '4px', borderRadius: '4px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: '#fff' }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--color-surface-dark-soft)',
+                      border: '1px solid var(--color-hairline)',
+                      color: 'var(--color-on-dark)',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
                   >
-                    <option value="ZONE_CENTRAL">ZONE_CENTRAL</option>
-                    <option value="ZONE_NORTH">ZONE_NORTH</option>
-                    <option value="ZONE_SOUTH">ZONE_SOUTH</option>
-                    <option value="ZONE_EAST">ZONE_EAST</option>
+                    <option value="ZONE_CENTRAL" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_CENTRAL</option>
+                    <option value="ZONE_NORTH" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_NORTH</option>
+                    <option value="ZONE_SOUTH" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_SOUTH</option>
+                    <option value="ZONE_EAST" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_EAST</option>
                   </select>
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
-                  <span className="mono-label">SEVERITY:</span>
+                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>SEVERITY:</span>
                   <select
                     value={formSeverity}
                     onChange={(e) => setFormSeverity(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', marginTop: '4px', borderRadius: '4px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: '#fff' }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--color-surface-dark-soft)',
+                      border: '1px solid var(--color-hairline)',
+                      color: 'var(--color-on-dark)',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
                   >
-                    <option value="CRITICAL">CRITICAL</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="MODERATE">MODERATE</option>
-                    <option value="INFO">INFO</option>
+                    <option value="CRITICAL" style={{ color: '#0f172a', background: '#ffffff' }}>CRITICAL</option>
+                    <option value="HIGH" style={{ color: '#0f172a', background: '#ffffff' }}>HIGH</option>
+                    <option value="MODERATE" style={{ color: '#0f172a', background: '#ffffff' }}>MODERATE</option>
+                    <option value="INFO" style={{ color: '#0f172a', background: '#ffffff' }}>INFO</option>
                   </select>
                 </div>
 
                 <div>
-                  <span className="mono-label">CATEGORY:</span>
+                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>CATEGORY:</span>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', marginTop: '4px', borderRadius: '4px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: '#fff' }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--color-surface-dark-soft)',
+                      border: '1px solid var(--color-hairline)',
+                      color: 'var(--color-on-dark)',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
                   >
-                    <option value="ACCIDENT">ACCIDENT</option>
-                    <option value="CONGESTION">CONGESTION</option>
-                    <option value="CONSTRUCTION">CONSTRUCTION</option>
-                    <option value="SIGNAL_FAILURE">SIGNAL_FAILURE</option>
-                    <option value="WEATHER">WEATHER</option>
+                    <option value="ACCIDENT" style={{ color: '#0f172a', background: '#ffffff' }}>ACCIDENT</option>
+                    <option value="CONGESTION" style={{ color: '#0f172a', background: '#ffffff' }}>CONGESTION</option>
+                    <option value="CONSTRUCTION" style={{ color: '#0f172a', background: '#ffffff' }}>CONSTRUCTION</option>
+                    <option value="SIGNAL_FAILURE" style={{ color: '#0f172a', background: '#ffffff' }}>SIGNAL_FAILURE</option>
+                    <option value="WEATHER" style={{ color: '#0f172a', background: '#ffffff' }}>WEATHER</option>
                   </select>
                 </div>
 
                 <div>
-                  <span className="mono-label">DELAY (MINS):</span>
+                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>DELAY (MINS):</span>
                   <input
                     type="number"
                     value={formDelay}
                     onChange={(e) => setFormDelay(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', marginTop: '4px', borderRadius: '4px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: '#fff' }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--color-surface-dark-soft)',
+                      border: '1px solid var(--color-hairline)',
+                      color: 'var(--color-on-dark)',
+                      fontSize: '14px',
+                      fontWeight: '600'
+                    }}
                   />
                 </div>
               </div>
 
               <div>
-                <span className="mono-label">DESCRIPTION:</span>
+                <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>DESCRIPTION:</span>
                 <textarea
                   rows={3}
                   required
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
                   placeholder="Provide incident details and traffic flow guidance..."
-                  style={{ width: '100%', padding: '8px 12px', marginTop: '4px', borderRadius: '4px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: '#fff' }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--color-surface-dark-soft)',
+                    border: '1px solid var(--color-hairline)',
+                    color: 'var(--color-on-dark)',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    resize: 'vertical'
+                  }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--color-hairline)', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" className="button-mint">Broadcast Alert</button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-hairline)' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    padding: '10px 20px',
+                    background: 'var(--color-surface-dark-soft)',
+                    border: '1px solid var(--color-hairline)',
+                    color: 'var(--color-on-dark)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '13px'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '10px 24px',
+                    background: 'var(--accent-orange)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    fontSize: '13px',
+                    boxShadow: '0 4px 12px rgba(252, 76, 2, 0.3)'
+                  }}
+                >
+                  Broadcast Alert
+                </button>
               </div>
             </form>
           </div>
