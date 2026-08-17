@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const alertsStore = require('../store/alertsStore');
 
 // Helper to fetch JSON with User-Agent header (required by Nominatim)
 async function fetchJson(url) {
@@ -9,6 +10,36 @@ async function fetchJson(url) {
   if (!res.ok) throw new Error(`HTTP error ${res.status}`);
   return await res.json();
 }
+
+const LOCATION_STOPWORDS = new Set([
+  'road', 'junction', 'flyover', 'zone', 'corridor', 'north', 'south', 'east', 'west',
+  'central', 'near', 'the', 'main', 'link', 'ring', 'outer', 'expressway', 'underpass',
+]);
+
+// Best-effort keyword match between an alert's reported location/title and a
+// route's road names - there's no real GPS geofencing here, just substring
+// matching on the significant place-name tokens (e.g. "Silk Board", "Hebbal").
+function extractLocationKeywords(text) {
+  return (text || '')
+    .split(/[^a-zA-Z]+/)
+    .map(w => w.trim())
+    .filter(w => w.length >= 4 && !LOCATION_STOPWORDS.has(w.toLowerCase()));
+}
+
+function routeMatchesAlert(route, originName, destName, alert) {
+  const haystack = [
+    originName, destName, route.title,
+    ...(route.segments || []).map(s => s.segment_name),
+  ].join(' ').toLowerCase();
+
+  const keywords = [
+    ...extractLocationKeywords(alert.location),
+    ...extractLocationKeywords(alert.title),
+  ];
+  return keywords.some(kw => haystack.includes(kw.toLowerCase()));
+}
+
+const CONGESTION_ESCALATION = { LOW: 'MODERATE', MODERATE: 'HEAVY', HEAVY: 'SEVERE', SEVERE: 'SEVERE' };
 
 router.post('/routes/optimize', async (req, res) => {
   const originQuery = (req.body?.origin || "Central Silk Board").trim();
@@ -80,12 +111,42 @@ router.post('/routes/optimize', async (req, res) => {
       };
     });
 
+    // 4. AI Incident-Aware Rerouting: apply real delay penalties from any
+    // active operator-logged alert whose location matches this route's
+    // roads, then re-pick the recommended route by lowest resulting ETA.
+    // Alerts live in Postgres now; if the DB is briefly unreachable we still
+    // return routes, just without incident penalties.
+    const activeAlerts = await alertsStore.getActiveAlerts().catch(err => {
+      console.warn('Could not load active alerts for rerouting:', err.message);
+      return [];
+    });
+    for (const route of formattedRoutes) {
+      const matchedAlert = activeAlerts.find(alert =>
+        routeMatchesAlert(route, orig.display_name, dest.display_name, alert)
+      );
+      if (matchedAlert) {
+        route.delay_time_mins += matchedAlert.estimated_delay_mins;
+        route.est_travel_time_mins += matchedAlert.estimated_delay_mins;
+        route.congestion_level = CONGESTION_ESCALATION[route.congestion_level];
+        route.affected_by_incident = {
+          alert_id: matchedAlert.alert_id,
+          title: matchedAlert.title,
+          added_delay_mins: matchedAlert.estimated_delay_mins,
+        };
+      }
+    }
+    const fastest = formattedRoutes.reduce((best, r) =>
+      r.est_travel_time_mins < best.est_travel_time_mins ? r : best
+    , formattedRoutes[0]);
+    formattedRoutes.forEach(r => { r.is_recommended = (r === fastest); });
+
     res.json({
       origin: orig.display_name,
       destination: dest.display_name,
       origin_coords: { lat: parseFloat(orig.lat), lon: parseFloat(orig.lon) },
       destination_coords: { lat: parseFloat(dest.lat), lon: parseFloat(dest.lon) },
       calculated_at: new Date().toISOString(),
+      active_incidents_considered: activeAlerts.length,
       routes: formattedRoutes
     });
 

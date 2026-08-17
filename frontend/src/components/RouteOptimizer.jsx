@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useToast } from '../context/ToastContext.jsx';
 
 // Custom Teardrop GPS Pin Marker Icons (Matching User Design)
 const createCustomIcon = (type, label) => {
@@ -51,12 +52,14 @@ const createCustomIcon = (type, label) => {
 };
 
 export default function RouteOptimizer() {
+  const { showToast } = useToast();
   const [origin, setOrigin] = useState('Central Silk Board, Bengaluru');
   const [destination, setDestination] = useState('Manyata Tech Park, Bengaluru');
   const [routeResult, setRouteResult] = useState(null);
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [routeError, setRouteError] = useState('');
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -84,12 +87,21 @@ export default function RouteOptimizer() {
 
   const fetchRouteOptimization = (orig, dest) => {
     setLoading(true);
+    setRouteError('');
     fetch('http://localhost:2001/api/v1/routes/optimize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ origin: orig, destination: dest })
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          const err = new Error(data.error || data.detail || 'Could not calculate a route for those locations.');
+          err.isApiError = true;
+          throw err;
+        }
+        return data;
+      })
       .then((data) => {
         setRouteResult(data);
         if (data.routes && data.routes.length > 0) {
@@ -99,7 +111,18 @@ export default function RouteOptimizer() {
         setLoading(false);
       })
       .catch((err) => {
+        if (err.isApiError) {
+          // A real error from the backend (e.g. an unrecognized address) - tell
+          // the user what went wrong instead of silently showing an empty panel.
+          setRouteError(err.message);
+          setRouteResult(null);
+          setLoading(false);
+          showToast(err.message, 'error');
+          return;
+        }
+
         console.warn('Backend route optimization server unavailable, using static fallback:', err);
+        showToast('Route service unreachable — showing offline demo data.', 'warning');
         const fallbackData = {
           origin: orig,
           destination: dest,
@@ -457,6 +480,23 @@ export default function RouteOptimizer() {
         </form>
       </div>
 
+      {routeError && (
+        <div
+          className="panel-card"
+          role="alert"
+          style={{ padding: '16px 20px', borderLeft: '3px solid var(--status-severe)', color: 'var(--status-severe)', fontSize: '13px', fontWeight: '600' }}
+        >
+          ⚠️ {routeError} — try a more specific address (e.g. add the city name).
+        </div>
+      )}
+
+      {loading && !routeResult && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+          <div className="panel-card skeleton skeleton-block" style={{ height: '420px' }} />
+          <div className="panel-card skeleton skeleton-block" style={{ height: '420px' }} />
+        </div>
+      )}
+
       {/* Split-Screen Grid (50% Map / 50% Tabbed Taskbar Route Details Panel) */}
       {routeResult && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
@@ -565,6 +605,20 @@ export default function RouteOptimizer() {
                       {activeRoute.congestion_level}
                     </span>
                   </div>
+                  {activeRoute.affected_by_incident && (
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid var(--status-severe)',
+                      fontSize: '12px',
+                      color: 'var(--status-severe)'
+                    }}>
+                      🚨 Rerouted around active incident: {activeRoute.affected_by_incident.title}
+                      {' '}(+{activeRoute.affected_by_incident.added_delay_mins} mins)
+                    </div>
+                  )}
                 </div>
 
                 {/* Metrics Summary Grid */}

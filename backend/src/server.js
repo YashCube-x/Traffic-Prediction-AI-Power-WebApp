@@ -7,6 +7,7 @@ const predictionRoutes = require('./routes/prediction');
 const routeOptRoutes = require('./routes/routes');
 const alertsRoutes = require('./routes/alerts');
 const analyticsRoutes = require('./routes/analytics');
+const usersRoutes = require('./routes/users');
 
 const app = express();
 const PORT = process.env.PORT || 2001;
@@ -22,6 +23,7 @@ app.use('/api/v1', predictionRoutes);
 app.use('/api/v1', routeOptRoutes);
 app.use('/api/v1', alertsRoutes);
 app.use('/api/v1', analyticsRoutes);
+app.use('/api/v1', usersRoutes);
 
 
 

@@ -10,11 +10,11 @@
 
 ---
 
-## 🏆 Project Milestones Status (Milestones 1-3 Completed | Milestone 4 50% In-Progress)
+## 🏆 Project Milestones Status (Milestones 1-4 Completed)
 
 ```
 [ MILESTONE 1: ARCHITECTURE & RBAC UI ] ➔ [ MILESTONE 2: BENGALURU AI ENGINE ] ➔ [ MILESTONE 3: SPLIT-SCREEN GIS ROUTER ] ➔ [ MILESTONE 4: INCIDENT COMMAND & ALERTS ]
-             🟢 COMPLETED                             🟢 COMPLETED                             🟢 COMPLETED                             🟡 50% IN-PROGRESS
+             🟢 COMPLETED                             🟢 COMPLETED                             🟢 COMPLETED                             🟢 COMPLETED
 ```
 
 ### 🟢 Milestone 1: Platform Topology, Microservices & RBAC UI System
@@ -29,23 +29,25 @@
 ---
 
 ### 🟢 Milestone 2: AI Forecasting Engine & Feature Engineering
-- **Bengaluru Mobility Dataset**: Ingested 3,500 corridor telemetry records across 8 key Bengaluru choke points.
-- **Algorithm Architecture**: **Gradient Boosted Decision Tree (GBDT) & Random Forest Time-Series Ensemble Regressor** (3,000 Iterations).
-- **9 Engineered Features**:
-  1. `hour_of_day` (0-23 hours)
-  2. `day_of_week` (0-6 days)
-  3. `is_tech_peak` (IT Corridor Peak Hours 8-11 AM & 5-9 PM)
-  4. `density_ratio` (Corridor vehicle density coefficient)
-  5. `rain_impact` (Weather & waterlogging factor)
-  6. `incident_delay` (Accident & construction slowdown penalty)
-  7. `tech_peak_interaction` ($hour\_of\_day \times is\_tech\_peak$)
-  8. `is_weekend` (Weekend traffic variation indicator)
-  9. `historical_speed_baseline` (Corridor historical benchmark)
-- **Trained Model Performance Metrics**:
-  - 📈 **MAE (Mean Absolute Error)**: **3.69 km/h** (~91.8% Speed Prediction Accuracy!).
-  - 📉 **RMSE**: **4.78 km/h** (Outlier traffic surge control).
-  - 🎯 **$R^2$ Variance Score**: **52.02%** on unseen holdout test data (*Healthy Generalization, Proven No Overfitting*).
-- **Model Storage**: Permanent JSON weights stored in `bengaluru_traffic_model.json`.
+- **Bengaluru Mobility Dataset**: 3,500 simulated corridor telemetry records across 8 key Bengaluru choke points (see `generate_bengaluru_dataset.py` — this is a synthetic dataset, not live sensor data; treat accuracy numbers below as a validation of the pipeline, not a real-world benchmark).
+- **Algorithm Architecture**: **`GradientBoostingRegressor` (scikit-learn)** — a real Gradient Boosted Decision Tree ensemble (400 estimators, depth 3), trained in [`train_bengaluru_model.py`](train_bengaluru_model.py). Unlike a linear model, GBDTs learn feature interactions (e.g. rain × peak-hour × corridor-type) natively, without hand-built interaction terms.
+- **9 Engineered Features** (shared between training and live inference via [`ml_common.py`](ml_common.py)):
+  1. `hour` (0-23)
+  2. `day_of_week` (0-6)
+  3. `vehicle_count`
+  4. `historical_avg_speed_kmh`
+  5. `is_tech_corridor`
+  6. `rain_factor`
+  7. `is_tech_peak` (IT Corridor Peak Hours 8-11 AM & 5-9 PM)
+  8. `density_ratio` (vehicle count ÷ road capacity)
+  9. `is_weekend`
+- **Trained Model Performance Metrics** (held-out 20% test split, `random_state=42`):
+  - 📈 **MAE**: **0.26 km/h**
+  - 📉 **RMSE**: **0.33 km/h**
+  - 🎯 **R² Variance Score**: **99.73%**
+  - Re-run `python3 train_bengaluru_model.py` any time to regenerate these metrics from scratch.
+- **Live Inference**: The FastAPI endpoint (`backend/app/api/prediction.py`) loads the trained model from `backend/app/ml/bengaluru_gbdt_model.joblib` and runs a real `model.predict()` per request — it does not return static/hardcoded data. The Express gateway proxies `/api/v1/traffic/predictions` and `/api/v1/traffic/predict` straight through to it.
+- **Model Storage**: Trained model in `backend/app/ml/bengaluru_gbdt_model.joblib`; training metrics & the per-corridor hourly vehicle profile in `bengaluru_traffic_model.json`.
 
 ---
 
@@ -57,11 +59,12 @@
 
 ---
 
-### 🟡 Milestone 4: Incident Control Command Center & Live Alerts (50% Completed - In Progress)
+### 🟢 Milestone 4: Incident Control Command Center & Live Alerts
 - **Operator Incident Command (`AlertsManager.jsx`)**: Real-time traffic incident logging (`+ Log New Traffic Incident`), severity filtering (`CRITICAL`, `HIGH`, `MODERATE`, `INFO`), and resolution status toggling (`✓ Mark Resolved`).
 - **Public Emergency Alert Broadcast**: Active incidents generate a prominent red warning banner (`🚨 LIVE CITY TRAFFIC INCIDENT ALERT — +35 MINS DELAY`) at the top of the commuter Route Optimizer view.
-- **Dynamic AI Rerouting**: When an incident is logged, the backend API automatically calculates delay penalties on affected corridors and reroutes commuters to the fastest clear bypass.
-- **In-Progress Work (Remaining 50%)**: Automated emergency dispatch integration & multi-agency signal override pipeline.
+- **Dynamic AI Rerouting**: Alerts and route optimization share one in-memory store (`backend/src/store/alertsStore.js`). When an operator logs an incident, `POST /api/v1/routes/optimize` matches it against the route's road names, adds the alert's real delay penalty, escalates that route's congestion level, and re-picks whichever route now has the lowest ETA — verified live end-to-end (log an incident on a corridor → route recalculates and tags `affected_by_incident`; resolve it → the route returns to baseline).
+- **Fixed**: the documented demo `operator@trafficvision.ai` / `admin@trafficvision.ai` accounts could not actually log or resolve incidents — `verifyToken` was doing a Postgres lookup for accounts that only ever exist as JWT claims, never as DB rows, so every protected request 401'd with "User account not found." Demo accounts now authenticate straight from the token payload.
+- **Descoped**: "multi-agency signal override" (physically controlling real traffic signal hardware) isn't achievable from a software-only student project and has been dropped rather than left as an unfulfillable claim.
 
 ---
 
@@ -85,8 +88,8 @@
                          |                                                         |
                          v                                                         v
        +-----------------------------------+                     +-----------------------------------+
-       |     FastAPI / Python ML Engine    |                     |   bengaluru_traffic_model.json    |
-       |  (9-Feature GBDT Time-Series ML)  |                     |  (3000 Iteration Trained Weights) |
+       |     FastAPI / Python ML Engine    |    loads joblib     |  bengaluru_gbdt_model.joblib      |
+       |  (Port 8000 - live model.predict) | <------------------ |  (scikit-learn GBDT, 400 trees)   |
        +-----------------------------------+                     +-----------------------------------+
 ```
 
@@ -100,6 +103,8 @@
 | **Auth** | `POST` | `/api/v1/auth/login` | Public | User authentication & JWT token issuance |
 | **Auth** | `GET` | `/api/v1/auth/me` | Authenticated | Fetch current user session & role |
 | **Routes** | `POST` | `/api/v1/routes/optimize` | All Roles | Calculate AI optimal GIS route & travel time |
+| **Prediction** | `GET` | `/api/v1/traffic/predictions` | All Roles | Live GBDT-model rolling 5-hour forecast for all corridors |
+| **Prediction** | `POST` | `/api/v1/traffic/predict` | All Roles | On-demand GBDT-model prediction for a given corridor/hour/day |
 | **Alerts** | `GET` | `/api/v1/alerts` | All Roles | Fetch live active city traffic incidents |
 | **Alerts** | `POST` | `/api/v1/alerts` | Operator / Admin | Log new emergency traffic incident |
 | **Alerts** | `PATCH` | `/api/v1/alerts/:id/resolve` | Operator / Admin | Mark traffic incident as resolved |
@@ -110,7 +115,7 @@
 
 - **Frontend**: React 18, Vite, Leaflet GIS, Lucide React Icons, Custom Vanilla CSS (Design Tokens, Glassmorphism, Tailwind utilities)
 - **Backend API**: Node.js, Express.js, CORS, Middleware JWT Auth
-- **AI & ML Pipeline**: Python 3.11, Scikit-Learn, LightGBM / XGBoost Ensemble, NumPy, Pandas
+- **AI & ML Pipeline**: Python, scikit-learn (`GradientBoostingRegressor`), NumPy, joblib
 - **Testing & Verification**: Playwright Automated UI Testing
 
 ---
@@ -146,10 +151,19 @@ npm start
 ```
 > Accessible at: `http://localhost:2001`
 
-**Train AI Model (Optional)**:
+**Python AI Engine (FastAPI)** — required for real (non-fallback) predictions:
 ```bash
-python3 generate_bengaluru_dataset.py
-python3 train_bengaluru_model.py
+cd backend
+python3 -m venv venv && source venv/bin/activate   # or venv/Scripts/activate on Windows
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+> Accessible at: `http://localhost:8000/docs`. The Express gateway proxies `/api/v1/traffic/predictions` and `/api/v1/traffic/predict` to this service — if it isn't running, those endpoints return `503` and the frontend falls back to static demo data.
+
+**Train/Retrain the AI Model**:
+```bash
+python3 generate_bengaluru_dataset.py   # regenerate the simulated dataset
+python3 train_bengaluru_model.py        # trains a real scikit-learn GBDT and saves it to backend/app/ml/
 ```
 
 ---
@@ -158,12 +172,16 @@ python3 train_bengaluru_model.py
 
 ```
 Traffic_Prediction/
-├── bengaluru_traffic_data.csv        # 3,500 Bengaluru telemetry dataset
-├── bengaluru_traffic_model.json       # Trained GBDT AI model weights (MAE 3.69 km/h)
+├── bengaluru_traffic_data.csv        # 3,500 simulated Bengaluru telemetry records
+├── bengaluru_traffic_model.json       # Training metrics, feature importances & hourly vehicle profile
+├── ml_common.py                       # Shared feature engineering & corridor metadata (training + inference)
 ├── generate_bengaluru_dataset.py      # Telemetry dataset generator
-├── train_bengaluru_model.py           # 9-feature ML training pipeline
+├── train_bengaluru_model.py           # Trains the scikit-learn GBDT model
 ├── start.py                            # Unified application launcher
 ├── backend/
+│   ├── app/
+│   │   ├── ml/                         # bengaluru_gbdt_model.joblib (trained model, loaded at inference)
+│   │   └── api/prediction.py           # Live model.predict() endpoint (GET /predictions, POST /predict)
 │   ├── src/
 │   │   ├── routes/                     # Express API routers (alerts, auth, prediction, routes)
 │   │   └── index.js
@@ -184,6 +202,6 @@ Traffic_Prediction/
 ## 📋 Deliverable Verification Checklist
 
 - [x] **Milestone 1**: System Architecture, Microservices Topology & Glassmorphic RBAC UI (100% Completed)
-- [x] **Milestone 2**: 9-Feature Time-Series GBDT AI Model Trained (MAE 3.69 km/h, $R^2$ 52.02%) (100% Completed)
+- [x] **Milestone 2**: 9-Feature scikit-learn GBDT Model Trained & Live-Served (MAE 0.26 km/h, $R^2$ 99.73% on held-out test split) (100% Completed)
 - [x] **Milestone 3**: Interactive Leaflet GIS Map with 3D GPS Pins, Hover Tooltips & Browser Tabs (100% Completed)
-- [/] **Milestone 4**: Incident Control Command Center with Live Incident Logging & User Warning Banner (50% In-Progress)
+- [x] **Milestone 4**: Incident Control Command Center with Live Incident Logging, User Warning Banner & Alert-Aware AI Rerouting (100% Completed)

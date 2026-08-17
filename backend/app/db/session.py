@@ -3,13 +3,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
+# Loads backend/.env regardless of the uvicorn working directory
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env"))
 load_dotenv()
 
-# Get Neon DB URL from environment
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
-    "postgresql://neondb_owner:npg_Cprkv41XNVUI@ep-calm-meadow-az4bd5t3-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
-)
+# SECURITY: the connection string (with its password) must come from the
+# environment — never hardcode credentials in source control.
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is not set. "
+        "Add it to backend/.env (e.g. postgresql://user:pass@host/db?sslmode=require)."
+    )
 
 # Standardize URL prefix for SQLAlchemy
 if DATABASE_URL.startswith("postgres://"):

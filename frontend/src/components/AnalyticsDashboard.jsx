@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext.jsx';
 
 export default function AnalyticsDashboard() {
+  const { showToast } = useToast();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -48,14 +50,26 @@ export default function AnalyticsDashboard() {
     setExporting(true);
     setTimeout(() => {
       setExporting(false);
-      alert('📄 TrafficVision AI Analytics Report generated and downloaded as PDF/CSV summary!');
+      showToast('Analytics report generated and downloaded as PDF/CSV summary.', 'success');
     }, 800);
   };
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-body)' }}>
-        <span className="mono-eyebrow">COMPUTING CITY-WIDE TRAFFIC HEATMAPS & METRICS...</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="stats-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <div className="stat-card" key={i}>
+              <span className="skeleton skeleton-text" style={{ width: '50%' }} />
+              <span className="skeleton skeleton-stat" style={{ marginTop: '8px' }} />
+            </div>
+          ))}
+        </div>
+        <div className="panel-card skeleton skeleton-block" style={{ height: '220px' }} />
+        <div className="dashboard-grid">
+          <div className="panel-card skeleton skeleton-block" style={{ height: '220px' }} />
+          <div className="panel-card skeleton skeleton-block" style={{ height: '220px' }} />
+        </div>
       </div>
     );
   }

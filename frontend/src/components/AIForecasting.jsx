@@ -69,8 +69,17 @@ export default function AIForecasting() {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-body)' }}>
-        <span className="mono-eyebrow">AI MODEL INFERENCE IN PROGRESS...</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="panel-card skeleton skeleton-block" style={{ height: '70px' }} />
+        <div className="stats-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <div className="stat-card" key={i}>
+              <span className="skeleton skeleton-text" style={{ width: '60%' }} />
+              <span className="skeleton skeleton-stat" style={{ marginTop: '8px' }} />
+            </div>
+          ))}
+        </div>
+        <div className="panel-card skeleton skeleton-block" style={{ height: '260px' }} />
       </div>
     );
   }
@@ -118,7 +127,7 @@ export default function AIForecasting() {
               <div className="stat-value" style={{ color: 'var(--accent-mint-text)' }}>
                 {Math.round(activeCorridor.ai_confidence_score * 100)}%
               </div>
-              <span className="mono-label">Time-Series LSTM Model</span>
+              <span className="mono-label">Gradient Boosted Decision Tree Model</span>
             </div>
 
             <div className="stat-card">

@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext.jsx';
 
 export default function AlertsManager({ userSession }) {
+  const { showToast } = useToast();
   const [alerts, setAlerts] = useState([]);
   const [filterSeverity, setFilterSeverity] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // A zone-scoped operator can only see and log incidents in their own zone;
+  // the backend enforces this too, the UI just mirrors it.
+  const isZonedOperator = userSession?.role === 'OPERATOR' && !!userSession?.assigned_zone;
+
   // Form State
   const [formTitle, setFormTitle] = useState('');
   const [formLocation, setFormLocation] = useState('');
-  const [formZone, setFormZone] = useState('ZONE_CENTRAL');
+  const [formZone, setFormZone] = useState(userSession?.assigned_zone || 'ZONE_CENTRAL');
   const [formSeverity, setFormSeverity] = useState('CRITICAL');
   const [formCategory, setFormCategory] = useState('ACCIDENT');
   const [formDesc, setFormDesc] = useState('');
@@ -19,7 +25,9 @@ export default function AlertsManager({ userSession }) {
 
   const fetchAlerts = () => {
     setLoading(true);
-    fetch('http://localhost:2001/api/v1/alerts')
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    fetch('http://localhost:2001/api/v1/alerts', { headers })
       .then((res) => res.json())
       .then((data) => {
         setAlerts(data);
@@ -90,20 +98,31 @@ export default function AlertsManager({ userSession }) {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     fetch(`http://localhost:2001/api/v1/alerts/${alertId}/resolve`, { method: 'PATCH', headers })
-      .then((res) => {
-        if (!res.ok) throw new Error('Unauthorized / Error');
-        return res.json();
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const err = new Error(data.error || 'You do not have permission to resolve this incident.');
+          err.isApiError = true;
+          throw err;
+        }
+        return data;
       })
       .then(() => {
         setAlerts((prev) =>
           prev.map((a) => (a.alert_id === alertId ? { ...a, is_resolved: true } : a))
         );
+        showToast('Incident marked resolved.', 'success');
       })
       .catch((err) => {
-        console.error('Failed to resolve alert:', err);
+        if (err.isApiError) {
+          showToast(err.message, 'error');
+          return;
+        }
+        console.warn('Alerts backend unreachable, resolving locally only:', err);
         setAlerts((prev) =>
           prev.map((a) => (a.alert_id === alertId ? { ...a, is_resolved: true } : a))
         );
+        showToast('Backend unreachable — resolved locally only, not synced.', 'warning');
       });
   };
 
@@ -127,17 +146,27 @@ export default function AlertsManager({ userSession }) {
       headers,
       body: JSON.stringify(payload)
     })
-      .then((res) => {
-        if (!res.ok) throw new Error('Unauthorized / Failed to create alert');
-        return res.json();
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const err = new Error(data.error || 'You do not have permission to log incidents.');
+          err.isApiError = true;
+          throw err;
+        }
+        return data;
       })
       .then((newAlert) => {
         setAlerts((prev) => [newAlert, ...prev]);
         setShowModal(false);
         resetForm();
+        showToast('Incident logged and now affecting live route calculations.', 'success');
       })
       .catch((err) => {
-        console.error('Failed to create alert on backend:', err);
+        if (err.isApiError) {
+          showToast(err.message, 'error');
+          return;
+        }
+        console.warn('Alerts backend unreachable, creating alert locally only:', err);
         const localAlert = {
           alert_id: `ALT-2026-00${alerts.length + 1}`,
           ...payload,
@@ -147,6 +176,7 @@ export default function AlertsManager({ userSession }) {
         setAlerts((prev) => [localAlert, ...prev]);
         setShowModal(false);
         resetForm();
+        showToast('Backend unreachable — incident saved locally only, not synced.', 'warning');
       });
   };
 
@@ -162,13 +192,31 @@ export default function AlertsManager({ userSession }) {
     return a.severity === filterSeverity;
   });
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="panel-card skeleton skeleton-block" style={{ height: '90px' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          {[0, 1, 2].map((i) => (
+            <div className="panel-card skeleton skeleton-block" style={{ height: '180px' }} key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header Panel */}
       <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <span className="mono-eyebrow">MILESTONE 3 — SMART ALERTS & INCIDENT DISPATCH</span>
+          <span className="mono-eyebrow">SMART ALERTS & INCIDENT DISPATCH</span>
           <h2 style={{ fontSize: '22px', fontWeight: '600', marginTop: '4px' }}>Real-Time Traffic Incident Command</h2>
+          {isZonedOperator && (
+            <span className="mono-label" style={{ fontSize: '11px', color: 'var(--status-moderate)', display: 'block', marginTop: '4px' }}>
+              📍 ZONE-SCOPED VIEW — you only see and manage incidents in {userSession.assigned_zone}
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -224,6 +272,12 @@ export default function AlertsManager({ userSession }) {
       </div>
 
       {/* Active Alerts List */}
+      {filteredAlerts.length === 0 && (
+        <div className="panel-card" style={{ padding: '32px', textAlign: 'center', color: 'var(--color-body)' }}>
+          <span className="mono-eyebrow">No incidents match this filter</span>
+          <p style={{ marginTop: '8px', fontSize: '13px' }}>Try a different severity filter, or log a new incident above.</p>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
         {filteredAlerts.map((alert) => {
           let sevColor = 'var(--status-low)';
@@ -395,10 +449,13 @@ export default function AlertsManager({ userSession }) {
                 </div>
 
                 <div>
-                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>ZONE ID:</span>
+                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>
+                    ZONE ID: {isZonedOperator && <em style={{ color: 'var(--status-moderate)' }}>(locked to your zone)</em>}
+                  </span>
                   <select
                     value={formZone}
                     onChange={(e) => setFormZone(e.target.value)}
+                    disabled={isZonedOperator}
                     style={{
                       width: '100%',
                       padding: '10px 14px',
@@ -407,13 +464,16 @@ export default function AlertsManager({ userSession }) {
                       border: '1px solid var(--color-hairline)',
                       color: 'var(--color-on-dark)',
                       fontSize: '13px',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      opacity: isZonedOperator ? 0.7 : 1,
+                      cursor: isZonedOperator ? 'not-allowed' : 'pointer'
                     }}
                   >
                     <option value="ZONE_CENTRAL" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_CENTRAL</option>
                     <option value="ZONE_NORTH" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_NORTH</option>
                     <option value="ZONE_SOUTH" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_SOUTH</option>
                     <option value="ZONE_EAST" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_EAST</option>
+                    <option value="ZONE_WEST" style={{ color: '#0f172a', background: '#ffffff' }}>ZONE_WEST</option>
                   </select>
                 </div>
               </div>

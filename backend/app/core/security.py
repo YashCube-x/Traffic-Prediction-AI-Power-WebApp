@@ -9,8 +9,14 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
-# Secret key and algorithm configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "trafficvision-secret-key-2026-super-secure")
+# Secret key and algorithm configuration. Must match the Express gateway's
+# JWT_SECRET_KEY (both read backend/.env) so tokens are valid across services.
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    if os.getenv("ENV", "development") == "production":
+        raise RuntimeError("JWT_SECRET_KEY environment variable must be set in production.")
+    print("⚠️  JWT_SECRET_KEY is not set — using an insecure development-only fallback. Set it in backend/.env.")
+    SECRET_KEY = "dev-only-insecure-secret"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
 

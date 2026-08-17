@@ -1,27 +1,39 @@
 #!/usr/bin/env python3
 """
-TrafficVision AI - High-Precision Bengaluru Mobility AI Model Trainer
-Advanced Feature Engineering Pipeline for Namma Bengaluru Traffic Bottleneck Forecasting.
+TrafficVision AI - Bengaluru Mobility AI Model Trainer.
+
+Trains a real scikit-learn Gradient Boosted Decision Tree regressor on the
+simulated Bengaluru corridor dataset and saves it for the FastAPI inference
+endpoint (backend/app/api/prediction.py) to load and query per request.
 """
 import csv
-import math
-import random
 import json
 import os
+import sys
 
-CSV_PATH = "bengaluru_traffic_data.csv"
-MODEL_OUTPUT = "bengaluru_traffic_model.json"
+import joblib
+import numpy as np
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-def train_bengaluru_model():
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT_DIR)
+from ml_common import FEATURE_NAMES, build_feature_row, CORRIDORS_BY_ID  # noqa: E402
+
+CSV_PATH = os.path.join(ROOT_DIR, "bengaluru_traffic_data.csv")
+MODEL_OUTPUT = os.path.join(ROOT_DIR, "bengaluru_traffic_model.json")
+MODEL_WEIGHTS_PATH = os.path.join(ROOT_DIR, "backend", "app", "ml", "bengaluru_gbdt_model.joblib")
+
+DEFAULT_VEHICLE_COUNT = 250.0
+
+
+def load_dataset():
     if not os.path.exists(CSV_PATH):
         import generate_bengaluru_dataset
         generate_bengaluru_dataset.generate_bengaluru_dataset()
 
-    print(f"📥 Loading Bengaluru Mobility Dataset from '{CSV_PATH}'...")
-    
-    X = []
-    y = []
-
+    X, y, corridor_names, hours = [], [], [], []
     with open(CSV_PATH, "r") as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -33,111 +45,105 @@ def train_bengaluru_model():
             rain = float(row["rain_factor"])
             target = float(row["target_speed_kmh"])
 
-            # 🛠️ ADVANCED FEATURE ENGINEERING FOR BENGALURU:
-            # 1. Tech Park Rush Hour Flag (8-11 AM & 5-9:30 PM)
-            is_tech_peak = 1.0 if ((8.0 <= hour <= 11.5) or (17.0 <= hour <= 21.5)) else 0.0
-            
-            # 2. Tech Corridor Rush Interaction (Corridor Type x Peak Hour)
-            tech_peak_interaction = is_tech_peak * is_tech
-            
-            # 3. Vehicle Density Ratio (Vehicles / Max Road Capacity 850)
-            density_ratio = vehicles / 850.0
-            
-            # 4. Rain Impact Multiplier
-            rain_impact = 1.0 - rain
-
-            # 5. Weekend Shift Flag (Saturday/Sunday tech traffic drop)
-            is_weekend = 1.0 if (day >= 5) else 0.0
-
-            # Feature Vector (9 Engineered Features)
-            feature_vector = [
-                1.0, hour, day, vehicles, hist_speed,
-                is_tech_peak, tech_peak_interaction, density_ratio, rain_impact, is_weekend
-            ]
-
-            X.append(feature_vector)
+            X.append(build_feature_row(hour, day, vehicles, hist_speed, is_tech, rain))
             y.append(target)
+            corridor_names.append(row["corridor"])
+            hours.append(int(hour))
 
-    n = len(X)
-    n_features = len(X[0])
-    print(f"📊 Feature Engineering Complete! Processed {n} Bengaluru corridor records with {n_features - 1} engineered features.")
+    return np.array(X), np.array(y), corridor_names, hours
 
-    # 80/20 Train-Test Split
-    split_idx = int(n * 0.8)
-    X_train, X_test = X[:split_idx], X[split_idx:]
-    y_train, y_test = y[:split_idx], y[split_idx:]
 
-    print(f"🤖 Training Bengaluru Time-Series Gradient Boosted Ensemble Model (3000 Iterations)...")
-    
-    weights = [0.05] * n_features
-    lr = 0.000005
-    epochs = 3000
+def build_hourly_vehicle_profile(corridor_names, hours, vehicle_counts):
+    """Average observed vehicle_count per (corridor, hour) in the training
+    data. The live inference endpoint uses this - not a hardcoded curve - to
+    estimate a realistic vehicle_count input for hours without a live sensor
+    reading."""
+    sums, counts = {}, {}
+    for corridor_name, hour, vehicles in zip(corridor_names, hours, vehicle_counts):
+        key = (corridor_name, hour)
+        sums[key] = sums.get(key, 0.0) + vehicles
+        counts[key] = counts.get(key, 0) + 1
 
-    for epoch in range(epochs):
-        grad = [0.0] * n_features
-        for i in range(len(X_train)):
-            pred = sum(w * x for w, x in zip(weights, X_train[i]))
-            err = pred - y_train[i]
-            for j in range(n_features):
-                grad[j] += err * X_train[i][j]
+    profile = {}
+    for corridor_id, meta in CORRIDORS_BY_ID.items():
+        corridor_name = meta["corridor"]
+        hourly = []
+        for h in range(24):
+            key = (corridor_name, h)
+            if key in counts:
+                hourly.append(round(sums[key] / counts[key], 1))
+            else:
+                hourly.append(DEFAULT_VEHICLE_COUNT)
+        profile[corridor_id] = hourly
+    return profile
 
-        for j in range(n_features):
-            weights[j] -= lr * (grad[j] / len(X_train))
 
-    # Evaluate on Test Set
-    test_errors = []
-    sq_errors = []
-    y_mean = sum(y_test) / len(y_test)
-    total_var = sum((yt - y_mean) ** 2 for yt in y_test)
-    residual_var = 0.0
+def train_bengaluru_model():
+    print(f"Loading Bengaluru mobility dataset from '{CSV_PATH}'...")
+    X, y, corridor_names, hours = load_dataset()
+    vehicle_counts = X[:, FEATURE_NAMES.index("vehicle_count")]
 
-    for i in range(len(X_test)):
-        pred = sum(w * x for w, x in zip(weights, X_test[i]))
-        err = abs(pred - y_test[i])
-        test_errors.append(err)
-        sq_errors.append((pred - y_test[i]) ** 2)
-        residual_var += (pred - y_test[i]) ** 2
+    print(f"Loaded {len(X)} records with {len(FEATURE_NAMES)} engineered features: {FEATURE_NAMES}")
 
-    mae = sum(test_errors) / len(test_errors)
-    rmse = math.sqrt(sum(sq_errors) / len(sq_errors))
-    r2_score = 1.0 - (residual_var / total_var if total_var != 0 else 0)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, shuffle=True
+    )
 
-    print(f"\n🏆 Bengaluru AI Model Performance Metrics:")
-    print(f"  -------------------------------------------------------------")
-    print(f"  📈 MAE (Mean Absolute Error)     : {mae:.2f} km/h  (Ultra-High Precision!)")
-    print(f"  📉 RMSE (Root Mean Sq Error)    : {rmse:.2f} km/h")
-    print(f"  🎯 R² Score (Variance Accuracy) : {r2_score * 100:.2f}%")
-    print(f"  -------------------------------------------------------------")
+    print("Training GradientBoostingRegressor (scikit-learn GBDT, 400 estimators)...")
+    model = GradientBoostingRegressor(
+        n_estimators=400,
+        max_depth=3,
+        learning_rate=0.05,
+        subsample=0.8,
+        random_state=42,
+    )
+    model.fit(X_train, y_train)
+
+    preds = model.predict(X_test)
+    mae = mean_absolute_error(y_test, preds)
+    rmse = mean_squared_error(y_test, preds) ** 0.5
+    r2 = r2_score(y_test, preds)
+
+    print("\nBengaluru AI Model Performance Metrics (held-out 20% test split):")
+    print(f"  MAE  : {mae:.2f} km/h")
+    print(f"  RMSE : {rmse:.2f} km/h")
+    print(f"  R^2  : {r2 * 100:.2f}%")
+
+    os.makedirs(os.path.dirname(MODEL_WEIGHTS_PATH), exist_ok=True)
+    joblib.dump(model, MODEL_WEIGHTS_PATH)
+    print(f"Trained model saved to '{MODEL_WEIGHTS_PATH}'")
+
+    hourly_vehicle_profile = build_hourly_vehicle_profile(corridor_names, hours, vehicle_counts)
+
+    feature_importances = {
+        name: round(float(imp), 4)
+        for name, imp in sorted(
+            zip(FEATURE_NAMES, model.feature_importances_), key=lambda kv: -kv[1]
+        )
+    }
 
     model_metadata = {
         "model_name": "TrafficVision AI - Bengaluru Urban Mobility Forecaster",
+        "model_type": "GradientBoostingRegressor (scikit-learn)",
         "target_city": "Bengaluru",
-        "dataset_file": CSV_PATH,
+        "dataset_file": "bengaluru_traffic_data.csv",
+        "dataset_note": "Simulated corridor telemetry (see generate_bengaluru_dataset.py), not live sensor data.",
         "total_records": len(X),
+        "test_split_size": len(X_test),
         "mae_kmh": round(mae, 2),
         "rmse_kmh": round(rmse, 2),
-        "accuracy_r2": f"{r2_score * 100:.2f}%",
-        "engineered_features": [
-            "bias", "hour", "day_of_week", "vehicle_count", "historical_avg_speed",
-            "is_tech_peak", "tech_peak_interaction", "density_ratio", "rain_impact", "is_weekend"
-        ],
-        "weights": [round(w, 6) for w in weights],
-        "key_bengaluru_corridors": [
-            "Central Silk Board Junction",
-            "Hebbal Flyover to Airport Expressway",
-            "Outer Ring Road (Marathahalli - Bellandur)",
-            "Tin Factory & K.R. Puram Junction",
-            "M.G. Road & Trinity Circle Corridor",
-            "Whitefield ITPB Main Road",
-            "Goraguntepalya Tumkur Road Junction",
-            "Electronic City Elevated Expressway"
-        ]
+        "accuracy_r2": f"{r2 * 100:.2f}%",
+        "feature_names": FEATURE_NAMES,
+        "feature_importances": feature_importances,
+        "hourly_vehicle_profile": hourly_vehicle_profile,
+        "key_bengaluru_corridors": [c["corridor"] for c in CORRIDORS_BY_ID.values()],
     }
 
     with open(MODEL_OUTPUT, "w") as f:
         json.dump(model_metadata, f, indent=2)
 
-    print(f"💾 Trained Bengaluru AI Model permanently saved to '{MODEL_OUTPUT}'")
+    print(f"Model metadata saved to '{MODEL_OUTPUT}'")
+
 
 if __name__ == "__main__":
     train_bengaluru_model()

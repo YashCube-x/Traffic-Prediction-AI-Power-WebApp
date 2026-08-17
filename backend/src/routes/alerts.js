@@ -1,90 +1,64 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken, requireRoles } = require('../middleware/auth');
+const { verifyToken, optionalAuth, requireRoles } = require('../middleware/auth');
+const alertsStore = require('../store/alertsStore');
 
-let MOCK_ALERTS = [
-  {
-    alert_id: "ALT-2026-001",
-    title: "Multi-Vehicle Collision near Hebbal Junction",
-    location: "Hebbal Flyover, North Corridor",
-    zone_id: "ZONE_NORTH",
-    severity: "CRITICAL",
-    category: "ACCIDENT",
-    description: "Collision blocking 2 center lanes. Emergency services dispatched. Expect heavy gridlock.",
-    estimated_delay_mins: 35,
-    is_resolved: false,
-    reported_at: new Date().toISOString()
-  },
-  {
-    alert_id: "ALT-2026-002",
-    title: "Traffic Signal Controller Failure at Silk Board",
-    location: "Central Silk Board Junction",
-    zone_id: "ZONE_SOUTH",
-    severity: "HIGH",
-    category: "SIGNAL_FAILURE",
-    description: "Signal lights operating on yellow flashing. Traffic personnel directing manual flow.",
-    estimated_delay_mins: 20,
-    is_resolved: false,
-    reported_at: new Date().toISOString()
-  },
-  {
-    alert_id: "ALT-2026-003",
-    title: "Metro Construction Lane Restriction",
-    location: "Outer Ring Road - Marathahalli",
-    zone_id: "ZONE_EAST",
-    severity: "MODERATE",
-    category: "CONSTRUCTION",
-    description: "Single lane narrowed for pillar casting work. Moderate slowdown observed.",
-    estimated_delay_mins: 12,
-    is_resolved: false,
-    reported_at: new Date().toISOString()
-  },
-  {
-    alert_id: "ALT-2026-004",
-    title: "Monsoon Waterlogging Warning",
-    location: "M.G. Road Underpass",
-    zone_id: "ZONE_CENTRAL",
-    severity: "INFO",
-    category: "WEATHER",
-    description: "Water accumulation reduced traffic speed to 15 km/h. Pumps deployed.",
-    estimated_delay_mins: 8,
-    is_resolved: true,
-    reported_at: new Date().toISOString()
+// GET /alerts — public for commuters (city-wide warning banner), but an
+// OPERATOR is zone-scoped and only sees incidents in their assigned zone.
+router.get('/alerts', optionalAuth, async (req, res) => {
+  try {
+    let alerts = await alertsStore.getAllAlerts();
+    if (req.user && req.user.role === 'OPERATOR' && req.user.assigned_zone) {
+      alerts = alerts.filter(a => a.zone_id === req.user.assigned_zone);
+    }
+    res.json(alerts);
+  } catch (err) {
+    console.error('Alerts fetch error:', err.message);
+    res.status(503).json({ error: 'Alerts database unavailable', details: err.message });
   }
-];
-
-// GET /alerts — Accessible to all logged in users
-router.get('/alerts', (req, res) => {
-  res.json(MOCK_ALERTS);
 });
 
-// POST /alerts — Restricted to ADMIN and OPERATOR roles
-router.post('/alerts', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), (req, res) => {
-  const newAlert = {
-    alert_id: `ALT-2026-00${MOCK_ALERTS.length + 1}`,
-    title: req.body.title || "Unspecified Traffic Incident",
-    location: req.body.location || "City Arterial Road",
-    zone_id: req.body.zone_id || "ZONE_CENTRAL",
-    severity: req.body.severity || "MODERATE",
-    category: req.body.category || "CONGESTION",
-    description: req.body.description || "Alert reported by traffic operator.",
-    estimated_delay_mins: req.body.estimated_delay_mins || 15,
-    is_resolved: false,
-    reported_at: new Date().toISOString()
-  };
-  MOCK_ALERTS.unshift(newAlert);
-  res.status(201).json(newAlert);
+// POST /alerts — Restricted to ADMIN and OPERATOR roles.
+// An OPERATOR can only log incidents inside their own assigned zone.
+router.post('/alerts', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), async (req, res) => {
+  const isZonedOperator = req.user.role === 'OPERATOR' && req.user.assigned_zone;
+  const zoneId = isZonedOperator ? req.user.assigned_zone : (req.body.zone_id || "ZONE_CENTRAL");
+
+  try {
+    const newAlert = await alertsStore.addAlert({
+      alert_id: await alertsStore.nextAlertId(),
+      title: req.body.title || "Unspecified Traffic Incident",
+      location: req.body.location || "City Arterial Road",
+      zone_id: zoneId,
+      severity: req.body.severity || "MODERATE",
+      category: req.body.category || "CONGESTION",
+      description: req.body.description || "Alert reported by traffic operator.",
+      estimated_delay_mins: req.body.estimated_delay_mins || 15,
+      reported_by: req.user.email,
+    });
+    res.status(201).json(newAlert);
+  } catch (err) {
+    console.error('Alert create error:', err.message);
+    res.status(503).json({ error: 'Could not save the incident', details: err.message });
+  }
 });
 
-// PATCH /alerts/:id/resolve — Restricted to ADMIN and OPERATOR roles
-router.patch('/alerts/:id/resolve', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), (req, res) => {
-  const alertId = req.params.id;
-  const alert = MOCK_ALERTS.find(a => a.alert_id === alertId);
-  if (alert) {
-    alert.is_resolved = true;
+// PATCH /alerts/:id/resolve — Restricted to ADMIN and OPERATOR roles.
+// An OPERATOR can only resolve incidents inside their own assigned zone.
+router.patch('/alerts/:id/resolve', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), async (req, res) => {
+  try {
+    const target = await alertsStore.findAlert(req.params.id);
+    if (!target) {
+      return res.status(404).json({ error: "Alert ID not found" });
+    }
+    if (req.user.role === 'OPERATOR' && req.user.assigned_zone && target.zone_id !== req.user.assigned_zone) {
+      return res.status(403).json({ error: `You can only resolve incidents in your assigned zone (${req.user.assigned_zone})` });
+    }
+    const alert = await alertsStore.resolveAlert(req.params.id);
     res.json(alert);
-  } else {
-    res.status(404).json({ error: "Alert ID not found" });
+  } catch (err) {
+    console.error('Alert resolve error:', err.message);
+    res.status(503).json({ error: 'Could not update the incident', details: err.message });
   }
 });
 

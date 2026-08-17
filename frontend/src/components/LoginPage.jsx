@@ -2,25 +2,34 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Activity, ArrowRight, Eye, EyeOff, ShieldCheck, UserCheck, Car } from 'lucide-react';
 
-export default function LoginPage({ onLoginSuccess, initialRegister = false }) {
+export default function LoginPage({ onLoginSuccess, initialRegister = false, initialView = 'auth' }) {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(initialRegister);
+  // 'auth' = login/register card, 'forgot' = request reset link, 'reset' = set new password
+  const [view, setView] = useState(initialView);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState('ADMIN');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
+  const [devResetLink, setDevResetLink] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const resetToken = new URLSearchParams(window.location.search).get('token') || '';
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
 
+    // Public self-registration always creates a COMMUTER; operator/admin
+    // accounts are created by the administrator from the User Management tab.
     const endpoint = isRegister ? 'http://localhost:2001/api/v1/auth/register' : 'http://localhost:2001/api/v1/auth/login';
     const payload = isRegister
-      ? { email, password, full_name: fullName, role }
+      ? { email, password, full_name: fullName }
       : { email, password };
 
     fetch(endpoint, {
@@ -79,6 +88,66 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false }) {
       .catch((err) => {
         setLoading(false);
         setErrorMsg(`Failed to connect to authentication server: ${err.message}`);
+      });
+  };
+
+  const handleForgotSubmit = (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
+    setInfoMsg('');
+    setDevResetLink('');
+
+    fetch('http://localhost:2001/api/v1/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not request password reset');
+        return data;
+      })
+      .then((data) => {
+        setLoading(false);
+        setInfoMsg(data.message);
+        if (data.dev_reset_link) setDevResetLink(data.dev_reset_link);
+      })
+      .catch((err) => {
+        setLoading(false);
+        setErrorMsg(err.message || 'Could not reach the authentication server.');
+      });
+  };
+
+  const handleResetSubmit = (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    if (newPassword !== confirmPassword) {
+      setErrorMsg('Passwords do not match.');
+      return;
+    }
+    setLoading(true);
+
+    fetch('http://localhost:2001/api/v1/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, new_password: newPassword })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not reset password');
+        return data;
+      })
+      .then((data) => {
+        setLoading(false);
+        setInfoMsg(data.message);
+        setView('auth');
+        setIsRegister(false);
+        navigate('/login');
+      })
+      .catch((err) => {
+        setLoading(false);
+        setErrorMsg(err.message || 'Could not reach the authentication server.');
       });
   };
 
@@ -174,7 +243,7 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false }) {
               {/* Card Header Row */}
               <div className="flex justify-between items-center pb-3 mb-5 border-b border-slate-100">
                 <span className="text-xs font-extrabold text-orange-600 uppercase tracking-wider">
-                  {isRegister ? 'NEW ACCOUNT REGISTRATION' : 'ALREADY MEMBERS'}
+                  {view === 'forgot' ? 'RESET YOUR PASSWORD' : view === 'reset' ? 'SET A NEW PASSWORD' : isRegister ? 'NEW ACCOUNT REGISTRATION' : 'ALREADY MEMBERS'}
                 </span>
                 <Link to="/" className="text-xs text-slate-400 hover:text-orange-500 font-medium transition-colors">
                   Need help?
@@ -187,7 +256,98 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false }) {
                 </div>
               )}
 
+              {infoMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs mb-4 font-medium">
+                  ✅ {infoMsg}
+                  {devResetLink && (
+                    <div className="mt-2 break-all">
+                      <span className="font-bold block mb-1">DEV MODE — reset link:</span>
+                      <a href={devResetLink} className="text-indigo-600 underline">{devResetLink}</a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Forgot Password Form */}
+              {view === 'forgot' && (
+                <form onSubmit={handleForgotSubmit} className="flex flex-col gap-4">
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Enter your account email and we'll send you a password reset link.
+                    Demo preset accounts (admin/operator/commuter) have fixed passwords and cannot be reset.
+                  </p>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                      Account Email
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="e.g. operator.north@trafficvision.ai"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 mt-2 flex items-center justify-center gap-2"
+                  >
+                    {loading ? 'Sending...' : 'SEND RESET LINK'}
+                    <ArrowRight size={14} />
+                  </button>
+                </form>
+              )}
+
+              {/* Reset Password Form (opened from the emailed link) */}
+              {view === 'reset' && (
+                <form onSubmit={handleResetSubmit} className="flex flex-col gap-4">
+                  {!resetToken && (
+                    <p className="text-xs text-red-600 font-medium">
+                      ⚠️ No reset token found in this link. Please use the full link from your reset email.
+                    </p>
+                  )}
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat the new password"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading || !resetToken}
+                    className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 mt-2 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {loading ? 'Saving...' : 'SET NEW PASSWORD'}
+                    <ArrowRight size={14} />
+                  </button>
+                </form>
+              )}
+
               {/* Login / Register Form */}
+              {view === 'auth' && (
               <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
                 {isRegister && (
                   <div>
@@ -235,6 +395,7 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false }) {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -243,20 +404,10 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false }) {
                 </div>
 
                 {isRegister && (
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
-                      Select System Role
-                    </label>
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
-                    >
-                      <option value="COMMUTER">Commuter User (Route View)</option>
-                      <option value="OPERATOR">Traffic Operator (Incidents)</option>
-                      <option value="ADMIN">System Administrator (Full Access)</option>
-                    </select>
-                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-200 rounded-xl p-3">
+                    ℹ️ New accounts are registered as <strong>Commuters</strong>.
+                    Traffic Operator accounts are issued only by the System Administrator.
+                  </p>
                 )}
 
                 <button
@@ -268,10 +419,19 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false }) {
                   <ArrowRight size={14} />
                 </button>
               </form>
+              )}
 
               {/* Card Footer Toggle Link */}
               <div className="text-center mt-5 text-xs text-slate-500 font-medium">
-                {isRegister ? (
+                {view !== 'auth' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setView('auth'); setIsRegister(false); setErrorMsg(''); setInfoMsg(''); }}
+                    className="text-orange-600 font-bold hover:underline cursor-pointer"
+                  >
+                    ← Back to Sign In
+                  </button>
+                ) : isRegister ? (
                   <>
                     Already have an account?{' '}
                     <button
@@ -291,6 +451,14 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false }) {
                       className="text-orange-600 font-bold hover:underline ml-1 cursor-pointer"
                     >
                       Create an account
+                    </button>
+                    <span className="mx-2 text-slate-300">|</span>
+                    <button
+                      type="button"
+                      onClick={() => { setView('forgot'); setErrorMsg(''); setInfoMsg(''); }}
+                      className="text-indigo-600 font-bold hover:underline cursor-pointer"
+                    >
+                      Forgot password?
                     </button>
                   </>
                 )}

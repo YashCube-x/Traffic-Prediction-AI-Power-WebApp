@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const { SECRET_KEY, verifyToken } = require('../middleware/auth');
+const { sendPasswordResetEmail } = require('../mailer');
 const crypto = require('crypto');
 
 // POST /api/v1/auth/login
@@ -19,22 +20,22 @@ router.post('/auth/login', async (req, res) => {
   if (
     (emailInput.includes('admin') || emailInput === 'admin@trafficvision.ai') && password === 'admin'
   ) {
-    const token = jwt.sign({ sub: 'USR-ADMIN-01', email: 'admin@trafficvision.ai', role: 'ADMIN' }, SECRET_KEY, { expiresIn: '24h' });
-    return res.json({ access_token: token, token_type: 'bearer', user_id: 'USR-ADMIN-01', email: 'admin@trafficvision.ai', full_name: 'System Administrator', role: 'ADMIN' });
+    const token = jwt.sign({ sub: 'USR-ADMIN-01', email: 'admin@trafficvision.ai', role: 'ADMIN', zone: null }, SECRET_KEY, { expiresIn: '24h' });
+    return res.json({ access_token: token, token_type: 'bearer', user_id: 'USR-ADMIN-01', email: 'admin@trafficvision.ai', full_name: 'System Administrator', role: 'ADMIN', assigned_zone: null, must_change_password: false });
   }
 
   if (
     (emailInput.includes('operator') || emailInput === 'operator@trafficvision.ai') && password === 'operator'
   ) {
-    const token = jwt.sign({ sub: 'USR-OPERATOR-01', email: 'operator@trafficvision.ai', role: 'OPERATOR' }, SECRET_KEY, { expiresIn: '24h' });
-    return res.json({ access_token: token, token_type: 'bearer', user_id: 'USR-OPERATOR-01', email: 'operator@trafficvision.ai', full_name: 'Traffic Operator', role: 'OPERATOR' });
+    const token = jwt.sign({ sub: 'USR-OPERATOR-01', email: 'operator@trafficvision.ai', role: 'OPERATOR', zone: 'ZONE_NORTH' }, SECRET_KEY, { expiresIn: '24h' });
+    return res.json({ access_token: token, token_type: 'bearer', user_id: 'USR-OPERATOR-01', email: 'operator@trafficvision.ai', full_name: 'Traffic Operator', role: 'OPERATOR', assigned_zone: 'ZONE_NORTH', must_change_password: false });
   }
 
   if (
     (emailInput.includes('commuter') || emailInput === 'commuter@trafficvision.ai') && password === 'commuter'
   ) {
-    const token = jwt.sign({ sub: 'USR-COMMUTER-01', email: 'commuter@trafficvision.ai', role: 'COMMUTER' }, SECRET_KEY, { expiresIn: '24h' });
-    return res.json({ access_token: token, token_type: 'bearer', user_id: 'USR-COMMUTER-01', email: 'commuter@trafficvision.ai', full_name: 'City Commuter', role: 'COMMUTER' });
+    const token = jwt.sign({ sub: 'USR-COMMUTER-01', email: 'commuter@trafficvision.ai', role: 'COMMUTER', zone: null }, SECRET_KEY, { expiresIn: '24h' });
+    return res.json({ access_token: token, token_type: 'bearer', user_id: 'USR-COMMUTER-01', email: 'commuter@trafficvision.ai', full_name: 'City Commuter', role: 'COMMUTER', assigned_zone: null, must_change_password: false });
   }
 
   // Database query for custom accounts
@@ -46,13 +47,16 @@ router.post('/auth/login', async (req, res) => {
     }
 
     const user = rows[0];
+    if (!user.is_active) {
+      return res.status(403).json({ error: 'This account has been deactivated. Contact your administrator.' });
+    }
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const token = jwt.sign(
-      { sub: user.id, email: user.email, role: user.role },
+      { sub: user.id, email: user.email, role: user.role, zone: user.assigned_zone || null },
       SECRET_KEY,
       { expiresIn: '24h' }
     );
@@ -63,7 +67,9 @@ router.post('/auth/login', async (req, res) => {
       user_id: user.id,
       email: user.email,
       full_name: user.full_name,
-      role: user.role
+      role: user.role,
+      assigned_zone: user.assigned_zone || null,
+      must_change_password: !!user.must_change_password
     });
 
   } catch (err) {
@@ -73,11 +79,13 @@ router.post('/auth/login', async (req, res) => {
 });
 
 // POST /api/v1/auth/register
+// SECURITY: public self-registration always creates a COMMUTER. OPERATOR and
+// ADMIN accounts can only be created by an ADMIN via POST /api/v1/users.
 router.post('/auth/register', async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const password = req.body.password || '';
   const fullName = req.body.full_name || 'Smart City User';
-  const role = req.body.role || 'COMMUTER';
+  const role = 'COMMUTER';
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
@@ -89,14 +97,14 @@ router.post('/auth/register', async (req, res) => {
 
     try {
       const { rows } = await pool.query(`
-        INSERT INTO users (id, email, password_hash, full_name, role)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO users (id, email, password_hash, full_name, role, is_active, created_at)
+        VALUES ($1, $2, $3, $4, $5, TRUE, CURRENT_TIMESTAMP)
         RETURNING id, email, full_name, role;
       `, [userId, email, passwordHash, fullName, role]);
 
       const newUser = rows[0];
       const token = jwt.sign(
-        { sub: newUser.id, email: newUser.email, role: newUser.role },
+        { sub: newUser.id, email: newUser.email, role: newUser.role, zone: null },
         SECRET_KEY,
         { expiresIn: '24h' }
       );
@@ -107,15 +115,20 @@ router.post('/auth/register', async (req, res) => {
         user_id: newUser.id,
         email: newUser.email,
         full_name: newUser.full_name,
-        role: newUser.role
+        role: newUser.role,
+        assigned_zone: null,
+        must_change_password: false
       });
     } catch (dbErr) {
+      if (dbErr.code === '23505') {
+        return res.status(400).json({ error: 'An account with this email already exists' });
+      }
       console.warn('DB registration fallback:', dbErr.message);
     }
 
     // In-memory token generation if DB write is offline
     const token = jwt.sign(
-      { sub: userId, email, role },
+      { sub: userId, email, role, zone: null },
       SECRET_KEY,
       { expiresIn: '24h' }
     );
@@ -126,7 +139,9 @@ router.post('/auth/register', async (req, res) => {
       user_id: userId,
       email,
       full_name: fullName,
-      role
+      role,
+      assigned_zone: null,
+      must_change_password: false
     });
 
   } catch (err) {
@@ -139,7 +154,7 @@ router.post('/auth/register', async (req, res) => {
 router.get('/auth/me', verifyToken, (req, res) => {
   const user = req.user;
   const token = jwt.sign(
-    { sub: user.id, email: user.email, role: user.role },
+    { sub: user.id, email: user.email, role: user.role, zone: user.assigned_zone || null },
     SECRET_KEY,
     { expiresIn: '24h' }
   );
@@ -150,8 +165,130 @@ router.get('/auth/me', verifyToken, (req, res) => {
     user_id: user.id,
     email: user.email,
     full_name: user.full_name,
-    role: user.role
+    role: user.role,
+    assigned_zone: user.assigned_zone || null,
+    must_change_password: !!user.must_change_password
   });
+});
+
+const DEMO_EMAILS = ['admin@trafficvision.ai', 'operator@trafficvision.ai', 'commuter@trafficvision.ai'];
+const RESET_TOKEN_TTL_MINUTES = 30;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:2000';
+
+// POST /api/v1/auth/forgot-password
+// Always responds with the same generic message so attackers can't probe
+// which emails exist. In development (no SMTP configured) the reset link is
+// printed to the server console and returned as dev_reset_link.
+router.post('/auth/forgot-password', async (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  const genericResponse = { message: 'If an account exists for this email, a password reset link has been sent.' };
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  if (DEMO_EMAILS.includes(email)) {
+    // Demo preset accounts have fixed passwords and never need resets.
+    return res.json(genericResponse);
+  }
+
+  try {
+    const { rows } = await pool.query('SELECT id, is_active FROM users WHERE LOWER(email) = $1', [email]);
+    if (rows.length === 0 || !rows[0].is_active) {
+      return res.json(genericResponse);
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+    await pool.query(
+      'INSERT INTO password_reset_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)',
+      [token, rows[0].id, expiresAt]
+    );
+
+    const resetLink = `${FRONTEND_URL}/reset-password?token=${token}`;
+    // With SMTP configured (backend/.env) a real email is sent; otherwise the
+    // link is printed to the console and, outside production, also returned
+    // to the client for easy local testing.
+    const { sent } = await sendPasswordResetEmail(email, resetLink);
+
+    const response = { ...genericResponse };
+    if (!sent && process.env.NODE_ENV !== 'production') {
+      response.dev_reset_link = resetLink;
+    }
+    return res.json(response);
+  } catch (err) {
+    console.error('Forgot-password error:', err.message);
+    return res.json(genericResponse);
+  }
+});
+
+// POST /api/v1/auth/reset-password  { token, new_password }
+router.post('/auth/reset-password', async (req, res) => {
+  const token = (req.body.token || '').trim();
+  const newPassword = req.body.new_password || '';
+
+  if (!token || newPassword.length < 6) {
+    return res.status(400).json({ error: 'A valid token and a password of at least 6 characters are required' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      'SELECT user_id FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW()',
+      [token]
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'This reset link is invalid or has expired. Please request a new one.' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = FALSE WHERE id = $2',
+      [passwordHash, rows[0].user_id]
+    );
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [rows[0].user_id]);
+
+    return res.json({ message: 'Password reset successfully. You can now sign in with your new password.' });
+  } catch (err) {
+    console.error('Reset-password error:', err.message);
+    return res.status(500).json({ error: 'Could not reset password', details: err.message });
+  }
+});
+
+// POST /api/v1/auth/change-password  { current_password, new_password }
+// Used both voluntarily and for the forced first-login change on
+// admin-created accounts (must_change_password = TRUE).
+router.post('/auth/change-password', verifyToken, async (req, res) => {
+  const currentPassword = req.body.current_password || '';
+  const newPassword = req.body.new_password || '';
+
+  if (DEMO_EMAILS.includes((req.user.email || '').toLowerCase())) {
+    return res.status(403).json({ error: 'Demo preset accounts cannot change their password.' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters' });
+  }
+
+  try {
+    const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, rows[0].password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, must_change_password = FALSE WHERE id = $2',
+      [passwordHash, req.user.id]
+    );
+
+    return res.json({ message: 'Password changed successfully.' });
+  } catch (err) {
+    console.error('Change-password error:', err.message);
+    return res.status(500).json({ error: 'Could not change password', details: err.message });
+  }
 });
 
 module.exports = router;
