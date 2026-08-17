@@ -2,13 +2,40 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const pool = require('../db');
 const { SECRET_KEY, verifyToken } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../mailer');
+const { audit } = require('../audit');
 const crypto = require('crypto');
 
+// Brute-force protection. Limits are per client IP.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20, // 20 login attempts / 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again after 15 minutes.' },
+});
+
+const resetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5, // 5 reset-link requests / hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many password reset requests. Please try again after an hour.' },
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10, // 10 registrations / hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many accounts created from this device. Please try again later.' },
+});
+
 // POST /api/v1/auth/login
-router.post('/auth/login', async (req, res) => {
+router.post('/auth/login', loginLimiter, async (req, res) => {
   const emailInput = (req.body.email || '').trim().toLowerCase();
   const password = req.body.password || '';
 
@@ -21,6 +48,7 @@ router.post('/auth/login', async (req, res) => {
     (emailInput.includes('admin') || emailInput === 'admin@trafficvision.ai') && password === 'admin'
   ) {
     const token = jwt.sign({ sub: 'USR-ADMIN-01', email: 'admin@trafficvision.ai', role: 'ADMIN', zone: null }, SECRET_KEY, { expiresIn: '24h' });
+    audit({ id: 'USR-ADMIN-01', email: 'admin@trafficvision.ai', role: 'ADMIN' }, 'LOGIN', 'admin@trafficvision.ai', 'demo preset', req);
     return res.json({ access_token: token, token_type: 'bearer', user_id: 'USR-ADMIN-01', email: 'admin@trafficvision.ai', full_name: 'System Administrator', role: 'ADMIN', assigned_zone: null, must_change_password: false });
   }
 
@@ -28,6 +56,7 @@ router.post('/auth/login', async (req, res) => {
     (emailInput.includes('operator') || emailInput === 'operator@trafficvision.ai') && password === 'operator'
   ) {
     const token = jwt.sign({ sub: 'USR-OPERATOR-01', email: 'operator@trafficvision.ai', role: 'OPERATOR', zone: 'ZONE_NORTH' }, SECRET_KEY, { expiresIn: '24h' });
+    audit({ id: 'USR-OPERATOR-01', email: 'operator@trafficvision.ai', role: 'OPERATOR' }, 'LOGIN', 'operator@trafficvision.ai', 'demo preset', req);
     return res.json({ access_token: token, token_type: 'bearer', user_id: 'USR-OPERATOR-01', email: 'operator@trafficvision.ai', full_name: 'Traffic Operator', role: 'OPERATOR', assigned_zone: 'ZONE_NORTH', must_change_password: false });
   }
 
@@ -61,6 +90,7 @@ router.post('/auth/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    audit(user, 'LOGIN', user.email, null, req);
     res.json({
       access_token: token,
       token_type: 'bearer',
@@ -81,7 +111,7 @@ router.post('/auth/login', async (req, res) => {
 // POST /api/v1/auth/register
 // SECURITY: public self-registration always creates a COMMUTER. OPERATOR and
 // ADMIN accounts can only be created by an ADMIN via POST /api/v1/users.
-router.post('/auth/register', async (req, res) => {
+router.post('/auth/register', registerLimiter, async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const password = req.body.password || '';
   const fullName = req.body.full_name || 'Smart City User';
@@ -179,7 +209,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:2000';
 // Always responds with the same generic message so attackers can't probe
 // which emails exist. In development (no SMTP configured) the reset link is
 // printed to the server console and returned as dev_reset_link.
-router.post('/auth/forgot-password', async (req, res) => {
+router.post('/auth/forgot-password', resetLimiter, async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const genericResponse = { message: 'If an account exists for this email, a password reset link has been sent.' };
 
@@ -222,7 +252,7 @@ router.post('/auth/forgot-password', async (req, res) => {
 });
 
 // POST /api/v1/auth/reset-password  { token, new_password }
-router.post('/auth/reset-password', async (req, res) => {
+router.post('/auth/reset-password', resetLimiter, async (req, res) => {
   const token = (req.body.token || '').trim();
   const newPassword = req.body.new_password || '';
 
@@ -246,6 +276,7 @@ router.post('/auth/reset-password', async (req, res) => {
     );
     await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [rows[0].user_id]);
 
+    audit({ id: rows[0].user_id }, 'PASSWORD_RESET', rows[0].user_id, 'via emailed reset link', req);
     return res.json({ message: 'Password reset successfully. You can now sign in with your new password.' });
   } catch (err) {
     console.error('Reset-password error:', err.message);
@@ -284,6 +315,7 @@ router.post('/auth/change-password', verifyToken, async (req, res) => {
       [passwordHash, req.user.id]
     );
 
+    audit(req.user, 'PASSWORD_CHANGE', req.user.email, null, req);
     return res.json({ message: 'Password changed successfully.' });
   } catch (err) {
     console.error('Change-password error:', err.message);

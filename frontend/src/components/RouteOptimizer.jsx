@@ -64,8 +64,7 @@ export default function RouteOptimizer() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
-  useEffect(() => {
-    // Fetch live active alerts for user visibility
+  const fetchActiveAlerts = () => {
     fetch('http://localhost:2001/api/v1/alerts')
       .then((res) => res.json())
       .then((data) => {
@@ -83,6 +82,18 @@ export default function RouteOptimizer() {
           }
         ]);
       });
+  };
+
+  useEffect(() => {
+    fetchActiveAlerts();
+  }, []);
+
+  // Live updates: when an operator logs/resolves an incident anywhere, the
+  // warning banner refreshes instantly without a page reload.
+  useEffect(() => {
+    const source = new EventSource('http://localhost:2001/api/v1/events');
+    source.addEventListener('alerts_changed', () => fetchActiveAlerts());
+    return () => source.close();
   }, []);
 
   const fetchRouteOptimization = (orig, dest) => {

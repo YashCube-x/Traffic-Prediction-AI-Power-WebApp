@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, ShieldCheck, Copy } from 'lucide-react';
+import { UserPlus, ShieldCheck, Copy, ScrollText, RefreshCw } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
 
 const ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
@@ -23,6 +23,8 @@ export default function UserManagement({ userSession }) {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState(null);
+  const [auditEntries, setAuditEntries] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(true);
 
   // Create form state
   const [formEmail, setFormEmail] = useState('');
@@ -53,8 +55,24 @@ export default function UserManagement({ userSession }) {
       });
   };
 
+  const fetchAudit = () => {
+    setAuditLoading(true);
+    fetch('http://localhost:2001/api/v1/audit', { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (res) => {
+        const data = await res.json().catch(() => []);
+        if (!res.ok) throw new Error(data.error || 'Could not load audit log');
+        return data;
+      })
+      .then((data) => {
+        setAuditEntries(data);
+        setAuditLoading(false);
+      })
+      .catch(() => setAuditLoading(false));
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchAudit();
   }, []);
 
   const handleCreate = (e) => {
@@ -282,6 +300,64 @@ export default function UserManagement({ userSession }) {
                         </span>
                       )}
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Audit Log Panel */}
+      <div className="panel-card">
+        <div className="panel-header">
+          <div>
+            <span className="mono-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <ScrollText size={12} /> SECURITY AUDIT TRAIL
+            </span>
+            <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Recent Privileged Actions</h3>
+          </div>
+          <button
+            onClick={fetchAudit}
+            style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', cursor: 'pointer', fontSize: '11px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RefreshCw size={12} /> Refresh
+          </button>
+        </div>
+
+        {auditLoading ? (
+          <div className="skeleton skeleton-block" style={{ height: '140px', marginTop: '12px' }} />
+        ) : auditEntries.length === 0 ? (
+          <p className="mono-label" style={{ marginTop: '12px', fontSize: '12px' }}>No audit entries yet — actions like logins, incident logging and account changes will appear here.</p>
+        ) : (
+          <div className="table-responsive-wrapper" style={{ marginTop: '12px', maxHeight: '340px', overflowY: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>TIME</th>
+                  <th>ACTOR</th>
+                  <th>ACTION</th>
+                  <th>TARGET</th>
+                  <th>IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditEntries.map((e) => (
+                  <tr key={e.id}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                      {new Date(e.created_at).toLocaleString()}
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '12px', fontWeight: '600' }}>{e.actor_email || '—'}</div>
+                      {e.actor_role && <span className="mono-label" style={{ fontSize: '10px' }}>{e.actor_role}</span>}
+                    </td>
+                    <td>
+                      <span className={`status-badge ${e.action.startsWith('ALERT') ? 'MODERATE' : e.action.startsWith('USER') ? 'HEAVY' : 'LOW'}`} style={{ fontSize: '10px' }}>
+                        {e.action}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '12px' }}>{e.target || '—'}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{e.ip || '—'}</td>
                   </tr>
                 ))}
               </tbody>

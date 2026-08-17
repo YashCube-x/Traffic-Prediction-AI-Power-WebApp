@@ -113,6 +113,21 @@ async function initDatabase() {
       );
     `);
 
+    // Audit trail of privileged actions (who did what, when, from where)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id BIGSERIAL PRIMARY KEY,
+        actor_id VARCHAR(50),
+        actor_email VARCHAR(255),
+        actor_role VARCHAR(20),
+        action VARCHAR(50) NOT NULL,
+        target VARCHAR(255),
+        details TEXT,
+        ip VARCHAR(64),
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Seed the demo incidents once, so a fresh database isn't empty
     const { rows: alertCount } = await client.query('SELECT COUNT(*) AS count FROM alerts');
     if (parseInt(alertCount[0].count, 10) === 0) {

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken, optionalAuth, requireRoles } = require('../middleware/auth');
 const alertsStore = require('../store/alertsStore');
+const { audit } = require('../audit');
+const { broadcast } = require('../events');
 
 // GET /alerts — public for commuters (city-wide warning banner), but an
 // OPERATOR is zone-scoped and only sees incidents in their assigned zone.
@@ -36,6 +38,8 @@ router.post('/alerts', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), async (
       estimated_delay_mins: req.body.estimated_delay_mins || 15,
       reported_by: req.user.email,
     });
+    audit(req.user, 'ALERT_CREATE', newAlert.alert_id, { title: newAlert.title, zone: newAlert.zone_id, severity: newAlert.severity }, req);
+    broadcast('alerts_changed', { kind: 'created' });
     res.status(201).json(newAlert);
   } catch (err) {
     console.error('Alert create error:', err.message);
@@ -55,6 +59,8 @@ router.patch('/alerts/:id/resolve', verifyToken, requireRoles(['ADMIN', 'OPERATO
       return res.status(403).json({ error: `You can only resolve incidents in your assigned zone (${req.user.assigned_zone})` });
     }
     const alert = await alertsStore.resolveAlert(req.params.id);
+    audit(req.user, 'ALERT_RESOLVE', alert.alert_id, { title: alert.title, zone: alert.zone_id }, req);
+    broadcast('alerts_changed', { kind: 'resolved' });
     res.json(alert);
   } catch (err) {
     console.error('Alert resolve error:', err.message);

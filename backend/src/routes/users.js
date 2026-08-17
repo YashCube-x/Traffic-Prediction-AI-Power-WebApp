@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const pool = require('../db');
 const { verifyToken, requireRoles } = require('../middleware/auth');
+const { audit } = require('../audit');
 
 const VALID_ROLES = ['ADMIN', 'OPERATOR', 'COMMUTER'];
 const VALID_ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
@@ -56,6 +57,7 @@ router.post('/users', ...adminOnly, async (req, res) => {
       RETURNING id, email, full_name, role, assigned_zone, must_change_password, is_active, created_at;
     `, [userId, email, passwordHash, fullName, role, role === 'OPERATOR' ? assignedZone : null]);
 
+    audit(req.user, 'USER_CREATE', email, { role, assigned_zone: role === 'OPERATOR' ? assignedZone : null }, req);
     // temp_password is echoed back exactly once so the admin can hand it to
     // the new operator; it is never retrievable again (only the hash is stored).
     res.status(201).json({ ...rows[0], temp_password: tempPassword });
@@ -111,9 +113,23 @@ router.patch('/users/:id', ...adminOnly, async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
+    audit(req.user, 'USER_UPDATE', rows[0].email, req.body, req);
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Could not update user', details: err.message });
+  }
+});
+
+// GET /api/v1/audit — latest privileged actions (ADMIN only)
+router.get('/audit', ...adminOnly, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT id, actor_email, actor_role, action, target, details, ip, created_at
+      FROM audit_log ORDER BY created_at DESC, id DESC LIMIT 100
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not fetch audit log', details: err.message });
   }
 });
 

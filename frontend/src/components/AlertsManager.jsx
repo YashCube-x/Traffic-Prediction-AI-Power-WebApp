@@ -93,6 +93,21 @@ export default function AlertsManager({ userSession }) {
     fetchAlerts();
   }, []);
 
+  // Live updates: the backend broadcasts an SSE signal whenever any incident
+  // is logged or resolved; refetching through the normal endpoint keeps the
+  // operator's zone-scoping intact.
+  useEffect(() => {
+    const source = new EventSource('http://localhost:2001/api/v1/events');
+    source.addEventListener('alerts_changed', (e) => {
+      fetchAlerts();
+      try {
+        const { kind } = JSON.parse(e.data);
+        showToast(kind === 'resolved' ? 'An incident was just resolved — feed updated live.' : 'New incident broadcast — feed updated live.', 'info');
+      } catch { /* signal only */ }
+    });
+    return () => source.close();
+  }, []);
+
   const handleResolve = (alertId) => {
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
