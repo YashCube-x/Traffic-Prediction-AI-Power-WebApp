@@ -2,6 +2,40 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { optionalAuth } = require('../middleware/auth');
+const tomtom = require('../tomtom');
+
+function congestionFromRatio(current, freeFlow) {
+  const ratio = freeFlow > 0 ? current / freeFlow : 1;
+  if (ratio < 0.4) return 'SEVERE';
+  if (ratio < 0.6) return 'HEAVY';
+  if (ratio < 0.8) return 'MODERATE';
+  return 'LOW';
+}
+
+// Overlays real live TomTom speeds onto the sensor list when the API key is
+// configured; otherwise the simulated values pass through untouched.
+async function withLiveSpeeds(sensors) {
+  if (!tomtom.isConfigured()) {
+    return { sensors, source: 'SIMULATED' };
+  }
+  const enriched = await Promise.all(sensors.map(async (s) => {
+    const flow = await tomtom.getFlowSegment(s.location.latitude, s.location.longitude);
+    if (!flow) return s;
+    return {
+      ...s,
+      metrics: {
+        ...s.metrics,
+        avg_speed_kmh: flow.current_speed_kmh,
+        free_flow_speed_kmh: flow.free_flow_speed_kmh,
+        congestion_level: congestionFromRatio(flow.current_speed_kmh, flow.free_flow_speed_kmh),
+      },
+      live: true,
+      timestamp: new Date().toISOString(),
+    };
+  }));
+  const anyLive = enriched.some(s => s.live);
+  return { sensors: enriched, source: anyLive ? 'TOMTOM_LIVE' : 'SIMULATED' };
+}
 
 // Same 8 corridors used by the AI forecasting model (see ml_common.py) so the
 // sensor map, route optimizer, and forecasting tabs all reference one
@@ -60,14 +94,17 @@ let activeSensors = [
 // GET /api/v1/traffic/status
 // Zone-scoped RBAC: an OPERATOR only ever sees the sensors of their own
 // assigned zone; ADMIN (and anonymous/commuter dashboards) see the full city.
-router.get('/traffic/status', optionalAuth, (req, res) => {
-  let visibleSensors = activeSensors;
+// With a TomTom key configured, speeds are LIVE (real Bengaluru traffic).
+router.get('/traffic/status', optionalAuth, async (req, res) => {
+  let scoped = activeSensors;
   let scopedZone = null;
 
   if (req.user && req.user.role === 'OPERATOR' && req.user.assigned_zone) {
     scopedZone = req.user.assigned_zone;
-    visibleSensors = activeSensors.filter(s => s.location.zone_id === scopedZone);
+    scoped = activeSensors.filter(s => s.location.zone_id === scopedZone);
   }
+
+  const { sensors: visibleSensors, source } = await withLiveSpeeds(scoped);
 
   const avgSpeed = visibleSensors.length
     ? (visibleSensors.reduce((acc, s) => acc + (s.metrics.avg_speed_kmh || 0), 0) / visibleSensors.length).toFixed(1)
@@ -79,6 +116,7 @@ router.get('/traffic/status', optionalAuth, (req, res) => {
     active_congestion_alerts: visibleSensors.filter(s => s.metrics.congestion_level === 'HEAVY' || s.metrics.congestion_level === 'SEVERE').length,
     system_status: "OPERATIONAL",
     scoped_zone: scopedZone,
+    data_source: source,
     recent_telemetry: visibleSensors
   });
 });

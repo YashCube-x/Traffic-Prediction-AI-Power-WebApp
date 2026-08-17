@@ -666,7 +666,10 @@ export default function App() {
                             <span className="mono-eyebrow">SENSOR TELEMETRY VIEWPORT</span>
                             <h3 style={{ fontSize: '18px', fontWeight: '600' }}>City Sensor Node Map</h3>
                           </div>
-                          <span className="mono-label">{trafficData?.recent_telemetry?.length || 0} SENSORS PLOTTED</span>
+                          <span className="mono-label">
+                            {trafficData?.recent_telemetry?.length || 0} SENSORS PLOTTED
+                            {trafficData?.data_source === 'TOMTOM_LIVE' ? ' • 🛰️ LIVE (TOMTOM)' : ' • SIMULATED'}
+                          </span>
                         </div>
 
                         <div className="map-viewport" style={{ padding: 0 }}>

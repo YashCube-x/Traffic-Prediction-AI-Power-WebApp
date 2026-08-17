@@ -497,7 +497,7 @@ export default function RouteOptimizer({ userSession = null }) {
             </h2>
           </div>
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px', background: 'rgba(52, 211, 153, 0.15)', color: 'var(--status-low)', border: '1px solid var(--status-low)' }}>
-            GIS ROUTER ● ONLINE
+            {routeResult?.routing_engine === 'TOMTOM_LIVE' ? '🛰️ LIVE TRAFFIC ● TOMTOM' : 'GIS ROUTER ● ONLINE'}
           </span>
         </div>
 
@@ -713,9 +713,11 @@ export default function RouteOptimizer({ userSession = null }) {
             </div>
             {departForecast && (
               <span className="mono-label" style={{ fontSize: '10px', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--color-hairline)', background: 'var(--color-surface-dark-soft)' }}>
-                {departForecast.model_used === 'gbdt'
-                  ? `🤖 AI GBDT FORECAST${departForecast.matched_corridor ? ` • ${departForecast.matched_corridor.toUpperCase()}` : ''}`
-                  : '📈 PEAK-HOUR HEURISTIC'}
+                {departForecast.model_used === 'tomtom'
+                  ? '🛰️ TOMTOM LIVE TRAFFIC'
+                  : departForecast.model_used === 'gbdt'
+                    ? `🤖 AI GBDT FORECAST${departForecast.matched_corridor ? ` • ${departForecast.matched_corridor.toUpperCase()}` : ''}`
+                    : '📈 PEAK-HOUR HEURISTIC'}
               </span>
             )}
           </div>

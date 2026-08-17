@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const alertsStore = require('../store/alertsStore');
+const tomtom = require('../tomtom');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
 
@@ -76,56 +77,100 @@ router.post('/routes/optimize', async (req, res) => {
     const orig = originGeocode[0];
     const dest = destGeocode[0];
 
-    // 2. Query Real OpenStreetMap Routing Engine (OSRM)
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${orig.lon},${orig.lat};${dest.lon},${dest.lat}?overview=full&geometries=geojson&alternatives=true&steps=true`;
-    const osrmData = await fetchJson(osrmUrl);
+    // 2. Routing: TomTom (REAL live traffic ETA + delay) when a key is
+    // configured, otherwise OSRM geometry with a peak-hour delay heuristic.
+    let formattedRoutes = null;
+    let routingEngine = 'OSRM_HEURISTIC';
 
-    if (!osrmData.routes || osrmData.routes.length === 0) {
-      return res.status(404).json({ error: "No drivable road route found between selected points" });
+    const tomtomResult = await tomtom.calculateRoute(
+      parseFloat(orig.lat), parseFloat(orig.lon), parseFloat(dest.lat), parseFloat(dest.lon), { alternatives: 2 }
+    );
+    if (tomtomResult?.routes?.length) {
+      routingEngine = 'TOMTOM_LIVE';
+      formattedRoutes = tomtomResult.routes.map((r, index) => {
+        const delayMins = r.traffic_delay_mins;
+        let congestionLevel = "LOW";
+        if (delayMins > 12) congestionLevel = "HEAVY";
+        else if (delayMins > 5) congestionLevel = "MODERATE";
+
+        const avgSpeed = r.travel_time_mins > 0 ? Math.round(r.distance_km / (r.travel_time_mins / 60)) : 30;
+        const segments = (r.streets || []).slice(0, 4).map((s, i, arr) => {
+          const nextOffset = arr[i + 1]?.offset_m ?? r.distance_km * 1000;
+          return {
+            segment_name: s.name,
+            distance_km: parseFloat(Math.max(0.1, (nextOffset - s.offset_m) / 1000).toFixed(1)),
+            avg_speed_kmh: avgSpeed,
+            congestion_level: congestionLevel,
+          };
+        });
+
+        const via = r.streets?.[0]?.name || 'Main Corridor';
+        return {
+          route_id: `ROUTE_LIVE_0${index + 1}`,
+          title: index === 0 ? `Fastest Live-Traffic Route (via ${via})` : `Live Alternative ${index} (via ${via})`,
+          distance_km: r.distance_km,
+          est_travel_time_mins: r.travel_time_mins,
+          delay_time_mins: delayMins,
+          congestion_level: congestionLevel,
+          fuel_efficiency_score: parseFloat(Math.max(1, 10 - delayMins * 0.3).toFixed(1)),
+          co2_saved_kg: parseFloat((r.distance_km * 0.08).toFixed(1)),
+          is_recommended: index === 0,
+          path_coords: r.path_coords,
+          segments,
+        };
+      });
     }
 
-    // 3. Process Live Routes & Calculate Traffic Delays based on real road metrics
-    const nowHour = new Date().getHours();
-    const isPeakHour = (nowHour >= 8 && nowHour <= 11) || (nowHour >= 17 && nowHour <= 20);
+    if (!formattedRoutes) {
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${orig.lon},${orig.lat};${dest.lon},${dest.lat}?overview=full&geometries=geojson&alternatives=true&steps=true`;
+      const osrmData = await fetchJson(osrmUrl);
 
-    const formattedRoutes = osrmData.routes.map((r, index) => {
-      const distKm = parseFloat((r.distance / 1000).toFixed(1));
-      const baseMins = Math.round(r.duration / 60);
-      
-      // Calculate realistic delay factor (peak hours vs off-peak)
-      const delayFactor = isPeakHour ? (index === 0 ? 0.35 : 0.15) : 0.08;
-      const delayMins = Math.round(baseMins * delayFactor);
-      const totalMins = baseMins + delayMins;
+      if (!osrmData.routes || osrmData.routes.length === 0) {
+        return res.status(404).json({ error: "No drivable road route found between selected points" });
+      }
 
-      let congestionLevel = "LOW";
-      if (delayMins > 12) congestionLevel = "HEAVY";
-      else if (delayMins > 5) congestionLevel = "MODERATE";
+      // Peak-hour delay heuristic (no live traffic source available)
+      const nowHour = new Date().getHours();
+      const isPeakHour = (nowHour >= 8 && nowHour <= 11) || (nowHour >= 17 && nowHour <= 20);
 
-      const ecoScore = (10 - (delayMins * 0.3)).toFixed(1);
-      const co2Saved = (distKm * 0.08).toFixed(1);
+      formattedRoutes = osrmData.routes.map((r, index) => {
+        const distKm = parseFloat((r.distance / 1000).toFixed(1));
+        const baseMins = Math.round(r.duration / 60);
 
-      // Convert GeoJSON [lon, lat] coordinates to Leaflet [lat, lon] coordinates
-      const pathCoords = (r.geometry?.coordinates || []).map(pt => [pt[1], pt[0]]);
+        const delayFactor = isPeakHour ? (index === 0 ? 0.35 : 0.15) : 0.08;
+        const delayMins = Math.round(baseMins * delayFactor);
+        const totalMins = baseMins + delayMins;
 
-      return {
-        route_id: `ROUTE_REAL_0${index + 1}`,
-        title: index === 0 ? `Primary Route (via ${r.legs[0]?.summary || 'Main Highway'})` : `AI Recommended Bypass (via ${r.legs[0]?.summary || 'Alternate Arterial'})`,
-        distance_km: distKm,
-        est_travel_time_mins: totalMins,
-        delay_time_mins: delayMins,
-        congestion_level: congestionLevel,
-        fuel_efficiency_score: parseFloat(ecoScore),
-        co2_saved_kg: parseFloat(co2Saved),
-        is_recommended: index === 0,
-        path_coords: pathCoords,
-        segments: (r.legs[0]?.steps || []).slice(0, 4).map(step => ({
-          segment_name: step.name || "Connecting Expressway Segment",
-          distance_km: parseFloat((step.distance / 1000).toFixed(1)),
-          avg_speed_kmh: Math.round((step.distance / step.duration) * 3.6) || 35,
-          congestion_level: congestionLevel
-        }))
-      };
-    });
+        let congestionLevel = "LOW";
+        if (delayMins > 12) congestionLevel = "HEAVY";
+        else if (delayMins > 5) congestionLevel = "MODERATE";
+
+        const ecoScore = (10 - (delayMins * 0.3)).toFixed(1);
+        const co2Saved = (distKm * 0.08).toFixed(1);
+
+        // Convert GeoJSON [lon, lat] coordinates to Leaflet [lat, lon] coordinates
+        const pathCoords = (r.geometry?.coordinates || []).map(pt => [pt[1], pt[0]]);
+
+        return {
+          route_id: `ROUTE_REAL_0${index + 1}`,
+          title: index === 0 ? `Primary Route (via ${r.legs[0]?.summary || 'Main Highway'})` : `AI Recommended Bypass (via ${r.legs[0]?.summary || 'Alternate Arterial'})`,
+          distance_km: distKm,
+          est_travel_time_mins: totalMins,
+          delay_time_mins: delayMins,
+          congestion_level: congestionLevel,
+          fuel_efficiency_score: parseFloat(ecoScore),
+          co2_saved_kg: parseFloat(co2Saved),
+          is_recommended: index === 0,
+          path_coords: pathCoords,
+          segments: (r.legs[0]?.steps || []).slice(0, 4).map(step => ({
+            segment_name: step.name || "Connecting Expressway Segment",
+            distance_km: parseFloat((step.distance / 1000).toFixed(1)),
+            avg_speed_kmh: Math.round((step.distance / step.duration) * 3.6) || 35,
+            congestion_level: congestionLevel
+          }))
+        };
+      });
+    }
 
     // 4. AI Incident-Aware Rerouting: apply real delay penalties from any
     // active operator-logged alert whose location matches this route's
@@ -163,6 +208,7 @@ router.post('/routes/optimize', async (req, res) => {
       destination_coords: { lat: parseFloat(dest.lat), lon: parseFloat(dest.lon) },
       calculated_at: new Date().toISOString(),
       active_incidents_considered: activeAlerts.length,
+      routing_engine: routingEngine,
       routes: formattedRoutes
     });
 
@@ -206,13 +252,34 @@ router.post('/routes/departure-forecast', async (req, res) => {
     ].join(' ').toLowerCase();
     const corridor = CORRIDOR_KEYWORDS.find(c => c.keywords.some(kw => haystack.includes(kw)));
 
-    // Try GBDT model predictions for each departure hour
     const now = new Date();
     const offsets = [0, 1, 2, 3, 4, 5];
     let modelUsed = 'peak-heuristic';
     let delaysByOffset = null;
+    let effectiveBaseMins = baseMins;
 
-    if (corridor) {
+    // Best source: TomTom departAt — real historical+live traffic per hour
+    if (tomtom.isConfigured()) {
+      try {
+        const results = await Promise.all(offsets.map((offset) => {
+          const departAt = new Date(now.getTime() + Math.max(offset * 3600 * 1000, 90 * 1000));
+          return tomtom.calculateRoute(
+            parseFloat(orig.lat), parseFloat(orig.lon), parseFloat(dest.lat), parseFloat(dest.lon),
+            { alternatives: 0, departAt }
+          );
+        }));
+        if (results.every(r => r?.routes?.length)) {
+          effectiveBaseMins = results[0].routes[0].no_traffic_time_mins;
+          delaysByOffset = results.map(r => Math.max(0, r.routes[0].travel_time_mins - effectiveBaseMins));
+          modelUsed = 'tomtom';
+        }
+      } catch (err) {
+        console.warn('Departure forecast: TomTom unavailable, trying GBDT:', err.message);
+      }
+    }
+
+    // Next: GBDT model predictions for each departure hour
+    if (!delaysByOffset && corridor) {
       try {
         const predictions = await Promise.all(offsets.map(async (offset) => {
           const hour = (now.getHours() + offset) % 24;
@@ -255,8 +322,8 @@ router.post('/routes/departure-forecast', async (req, res) => {
       const departAt = new Date(now.getTime() + offset * 3600 * 1000);
       const incidentDelay = matchedAlert && offset <= 1 ? matchedAlert.estimated_delay_mins : 0;
       const delayMins = delaysByOffset[i] + incidentDelay;
-      const etaMins = baseMins + delayMins;
-      const ratio = delayMins / baseMins;
+      const etaMins = effectiveBaseMins + delayMins;
+      const ratio = delayMins / effectiveBaseMins;
       const congestion = ratio > 0.45 ? 'SEVERE' : ratio > 0.25 ? 'HEAVY' : ratio > 0.1 ? 'MODERATE' : 'LOW';
       return {
         offset_hours: offset,
@@ -274,7 +341,7 @@ router.post('/routes/departure-forecast', async (req, res) => {
       origin: orig.display_name,
       destination: dest.display_name,
       distance_km: distKm,
-      base_eta_mins: baseMins,
+      base_eta_mins: effectiveBaseMins,
       model_used: modelUsed,
       matched_corridor: corridor?.corridor || null,
       active_incident: matchedAlert ? { title: matchedAlert.title, delay_mins: matchedAlert.estimated_delay_mins } : null,
