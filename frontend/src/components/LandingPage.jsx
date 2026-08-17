@@ -93,6 +93,12 @@ export default function LandingPage() {
             {/* Dual Action Buttons */}
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <Link
+                to="/route"
+                className="px-8 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider shadow-lg hover:shadow-xl transition-all no-underline flex items-center gap-2"
+              >
+                🚦 Check Live Traffic — No Login <ArrowRight size={16} />
+              </Link>
+              <Link
                 to="/login"
                 className="px-8 py-4 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs uppercase tracking-wider shadow-lg hover:shadow-xl transition-all no-underline flex items-center gap-2"
               >

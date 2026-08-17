@@ -20,6 +20,7 @@ import AlertsManager from './components/AlertsManager';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import UserManagement from './components/UserManagement';
 import ForcePasswordChange from './components/ForcePasswordChange';
+import PublicRoutePage from './components/PublicRoutePage';
 
 const inputStyle = {
   width: '100%',
@@ -361,6 +362,12 @@ export default function App() {
       <Route
         path="/reset-password"
         element={<LoginPage onLoginSuccess={handleLoginSuccess} initialView="reset" />}
+      />
+
+      {/* 4b. Public no-login traffic check for city commuters */}
+      <Route
+        path="/route"
+        element={<PublicRoutePage userSession={userSession} />}
       />
 
       {/* 5. Authenticated Portal Dashboard Route */}
@@ -765,7 +772,7 @@ export default function App() {
                 )}
 
                 {activeTab === 'predictions' && <AIForecasting />}
-                {activeTab === 'routes' && <RouteOptimizer />}
+                {activeTab === 'routes' && <RouteOptimizer userSession={userSession} />}
                 {activeTab === 'alerts' && <AlertsManager userSession={userSession} />}
                 {activeTab === 'analytics' && <AnalyticsDashboard />}
                 {activeTab === 'users' && <UserManagement userSession={userSession} />}

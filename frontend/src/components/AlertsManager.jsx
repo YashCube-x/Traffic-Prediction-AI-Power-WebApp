@@ -7,6 +7,7 @@ export default function AlertsManager({ userSession }) {
   const [filterSeverity, setFilterSeverity] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pendingReports, setPendingReports] = useState([]);
 
   // A zone-scoped operator can only see and log incidents in their own zone;
   // the backend enforces this too, the UI just mirrors it.
@@ -93,6 +94,42 @@ export default function AlertsManager({ userSession }) {
     fetchAlerts();
   }, []);
 
+  // Citizen reports pending verification (operator sees only own zone)
+  const fetchPendingReports = () => {
+    if (!token) return;
+    fetch('http://localhost:2001/api/v1/reports?status=PENDING', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => res.json())
+      .then((data) => Array.isArray(data) && setPendingReports(data))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchPendingReports();
+  }, [token]);
+
+  const handleReviewReport = (reportId, decision) => {
+    fetch(`http://localhost:2001/api/v1/reports/${reportId}/${decision}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: decision === 'approve' ? JSON.stringify({ severity: 'MODERATE', estimated_delay_mins: 10 }) : undefined,
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Review failed');
+        return data;
+      })
+      .then(() => {
+        fetchPendingReports();
+        if (decision === 'approve') {
+          fetchAlerts();
+          showToast('Report verified — now a live alert affecting routes.', 'success');
+        } else {
+          showToast('Report dismissed.', 'info');
+        }
+      })
+      .catch((err) => showToast(err.message, 'error'));
+  };
+
   // Live updates: the backend broadcasts an SSE signal whenever any incident
   // is logged or resolved; refetching through the normal endpoint keeps the
   // operator's zone-scoping intact.
@@ -105,6 +142,7 @@ export default function AlertsManager({ userSession }) {
         showToast(kind === 'resolved' ? 'An incident was just resolved — feed updated live.' : 'New incident broadcast — feed updated live.', 'info');
       } catch { /* signal only */ }
     });
+    source.addEventListener('reports_changed', () => fetchPendingReports());
     return () => source.close();
   }, []);
 
@@ -285,6 +323,48 @@ export default function AlertsManager({ userSession }) {
           </button>
         ))}
       </div>
+
+      {/* 🚩 Citizen Reports Pending Verification */}
+      {pendingReports.length > 0 && (
+        <div className="panel-card" style={{ borderLeft: '4px solid var(--status-moderate)' }}>
+          <div className="panel-header">
+            <div>
+              <span className="mono-eyebrow" style={{ color: 'var(--status-moderate)' }}>🚩 CITIZEN REPORTS — PENDING VERIFICATION</span>
+              <h3 style={{ fontSize: '18px', fontWeight: '600' }}>
+                {pendingReports.length} report{pendingReports.length > 1 ? 's' : ''} awaiting your review
+              </h3>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px', marginTop: '12px' }}>
+            {pendingReports.map((r) => (
+              <div key={r.id} style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', borderRadius: 'var(--radius-md)', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                  <span className="mono-eyebrow" style={{ fontSize: '10px' }}>{r.category} • {r.zone_id}</span>
+                  <span className="mono-label" style={{ fontSize: '10px' }}>{new Date(r.created_at).toLocaleTimeString()}</span>
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: '700' }}>{r.title}</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-body)' }}>📍 {r.location}</div>
+                {r.description && <div style={{ fontSize: '12px', color: 'var(--color-body)' }}>{r.description}</div>}
+                <div className="mono-label" style={{ fontSize: '10px' }}>Reported by: {r.reporter_email}</div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                  <button
+                    onClick={() => handleReviewReport(r.id, 'approve')}
+                    style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-sm)', background: 'rgba(52, 211, 153, 0.15)', border: '1px solid var(--status-low)', color: 'var(--status-low)', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
+                  >
+                    ✓ Verify → Broadcast Alert
+                  </button>
+                  <button
+                    onClick={() => handleReviewReport(r.id, 'dismiss')}
+                    style={{ flex: 1, padding: '8px', borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--status-severe)', color: 'var(--status-severe)', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
+                  >
+                    ✕ Dismiss
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Active Alerts List */}
       {filteredAlerts.length === 0 && (

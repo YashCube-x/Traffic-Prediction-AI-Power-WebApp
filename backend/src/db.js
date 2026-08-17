@@ -68,27 +68,19 @@ async function initDatabase() {
     `);
     await client.query(`ALTER TABLE password_reset_tokens ALTER COLUMN user_id TYPE VARCHAR(50);`);
 
-    // Seed default users if empty. NOTE: SELECT COUNT(*) always returns one
-    // row, so the count must be read from rows[0].count, not rowCount.
-    const { rows: countRows } = await client.query('SELECT COUNT(*) AS count FROM users');
-    if (parseInt(countRows[0].count, 10) === 0) {
-      console.log('🌱 Seeding default users into Neon PostgreSQL...');
-
-      const adminPass = await bcrypt.hash('admin', 10);
-      const operatorPass = await bcrypt.hash('operator', 10);
-      const commuterPass = await bcrypt.hash('commuter', 10);
-
-      await client.query(`
-        INSERT INTO users (id, email, password_hash, full_name, role, assigned_zone)
-        VALUES
-          ('USR-ADMIN-01', 'admin@trafficvision.ai', $1, 'System Administrator', 'ADMIN', NULL),
-          ('USR-OPERATOR-01', 'operator@trafficvision.ai', $2, 'City Traffic Operator', 'OPERATOR', 'ZONE_NORTH'),
-          ('USR-COMMUTER-01', 'commuter@trafficvision.ai', $3, 'Smart City Commuter', 'COMMUTER', NULL)
-        ON CONFLICT (email) DO NOTHING;
-      `, [adminPass, operatorPass, commuterPass]);
-
-      console.log('✅ Default users seeded successfully in Neon DB.');
-    }
+    // Seed default demo users. ON CONFLICT DO NOTHING makes this idempotent,
+    // so it runs on every startup and self-heals a partially-seeded table.
+    const adminPass = await bcrypt.hash('admin', 10);
+    const operatorPass = await bcrypt.hash('operator', 10);
+    const commuterPass = await bcrypt.hash('commuter', 10);
+    await client.query(`
+      INSERT INTO users (id, email, password_hash, full_name, role, assigned_zone, is_active, created_at)
+      VALUES
+        ('USR-ADMIN-01', 'admin@trafficvision.ai', $1, 'System Administrator', 'ADMIN', NULL, TRUE, CURRENT_TIMESTAMP),
+        ('USR-OPERATOR-01', 'operator@trafficvision.ai', $2, 'City Traffic Operator', 'OPERATOR', 'ZONE_NORTH', TRUE, CURRENT_TIMESTAMP),
+        ('USR-COMMUTER-01', 'commuter@trafficvision.ai', $3, 'Smart City Commuter', 'COMMUTER', NULL, TRUE, CURRENT_TIMESTAMP)
+      ON CONFLICT (email) DO NOTHING;
+    `, [adminPass, operatorPass, commuterPass]);
 
     // Ensure the demo operator always has a zone (existing rows from before zone-scoping)
     await client.query(`
@@ -110,6 +102,37 @@ async function initDatabase() {
         reported_by VARCHAR(255),
         is_resolved BOOLEAN NOT NULL DEFAULT FALSE,
         reported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Commuters' saved favourite routes ("My Commute")
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS saved_routes (
+        id BIGSERIAL PRIMARY KEY,
+        user_id VARCHAR(50) NOT NULL,
+        label VARCHAR(120),
+        origin VARCHAR(255) NOT NULL,
+        destination VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, origin, destination)
+      );
+    `);
+
+    // Citizen-submitted traffic reports, pending operator verification.
+    // An approved report becomes a real alert (and affects routing).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS citizen_reports (
+        id BIGSERIAL PRIMARY KEY,
+        reporter_id VARCHAR(50),
+        reporter_email VARCHAR(255),
+        title VARCHAR(200) NOT NULL,
+        location VARCHAR(200) NOT NULL,
+        zone_id VARCHAR(30) NOT NULL,
+        category VARCHAR(30) NOT NULL DEFAULT 'CONGESTION',
+        description TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        reviewed_by VARCHAR(255),
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
 

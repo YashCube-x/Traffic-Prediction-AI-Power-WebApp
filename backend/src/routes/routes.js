@@ -2,6 +2,22 @@ const express = require('express');
 const router = express.Router();
 const alertsStore = require('../store/alertsStore');
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
+
+// Maps well-known Bengaluru place names to the GBDT model's corridors
+// (ml_common.py) so the departure forecast can use real AI predictions
+// when a route passes through a modelled corridor.
+const CORRIDOR_KEYWORDS = [
+  { corridor_id: 'CORRIDOR_SILK_BOARD', corridor: 'Central Silk Board Junction', normal_speed: 18.0, keywords: ['silk board', 'btm layout', 'hsr layout'] },
+  { corridor_id: 'CORRIDOR_HEBBAL_FLYOVER', corridor: 'Hebbal Flyover to Airport Expressway', normal_speed: 35.0, keywords: ['hebbal', 'bellary road', 'airport road'] },
+  { corridor_id: 'CORRIDOR_ORR_BELLANDUR', corridor: 'Outer Ring Road (Marathahalli - Bellandur)', normal_speed: 20.0, keywords: ['marathahalli', 'bellandur', 'outer ring', 'sarjapur'] },
+  { corridor_id: 'CORRIDOR_TIN_FACTORY', corridor: 'Tin Factory & K.R. Puram Junction', normal_speed: 12.0, keywords: ['tin factory', 'k.r. puram', 'kr puram', 'old madras'] },
+  { corridor_id: 'CORRIDOR_MG_ROAD', corridor: 'M.G. Road & Trinity Circle Corridor', normal_speed: 22.0, keywords: ['m.g. road', 'mg road', 'trinity', 'brigade road'] },
+  { corridor_id: 'CORRIDOR_WHITEFIELD', corridor: 'Whitefield ITPB Main Road', normal_speed: 16.0, keywords: ['whitefield', 'itpb', 'itpl'] },
+  { corridor_id: 'CORRIDOR_GORAGUNTEPALYA', corridor: 'Goraguntepalya Tumkur Road Junction', normal_speed: 24.0, keywords: ['goraguntepalya', 'tumkur', 'yeshwanthpur'] },
+  { corridor_id: 'CORRIDOR_ELECTRONIC_CITY', corridor: 'Electronic City Elevated Expressway', normal_speed: 48.0, keywords: ['electronic city', 'hosur road'] },
+];
+
 // Helper to fetch JSON with User-Agent header (required by Nominatim)
 async function fetchJson(url) {
   const res = await fetch(url, {
@@ -153,6 +169,125 @@ router.post('/routes/optimize', async (req, res) => {
   } catch (err) {
     console.error('Real routing error:', err);
     res.status(500).json({ error: "Failed to fetch real-time route data", details: err.message });
+  }
+});
+
+// POST /routes/departure-forecast  { origin, destination }
+// "Best time to leave": ETA for departing now and each of the next 5 hours.
+// If the route passes through a corridor the GBDT model knows, the forecast
+// uses real model predictions from the FastAPI AI engine; otherwise (or if
+// the engine is down) it falls back to the peak-hour heuristic.
+router.post('/routes/departure-forecast', async (req, res) => {
+  const originQuery = (req.body?.origin || "Central Silk Board").trim();
+  const destinationQuery = (req.body?.destination || "Manyata Tech Park").trim();
+
+  try {
+    const originGeocode = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(originQuery)}`);
+    const destGeocode = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(destinationQuery)}`);
+    if (!originGeocode?.length) return res.status(400).json({ error: `Could not locate origin: "${originQuery}"` });
+    if (!destGeocode?.length) return res.status(400).json({ error: `Could not locate destination: "${destinationQuery}"` });
+
+    const orig = originGeocode[0];
+    const dest = destGeocode[0];
+    const osrmData = await fetchJson(
+      `https://router.project-osrm.org/route/v1/driving/${orig.lon},${orig.lat};${dest.lon},${dest.lat}?overview=false&steps=true`
+    );
+    if (!osrmData.routes?.length) return res.status(404).json({ error: "No drivable road route found between selected points" });
+
+    const route = osrmData.routes[0];
+    const baseMins = Math.round(route.duration / 60);
+    const distKm = parseFloat((route.distance / 1000).toFixed(1));
+
+    // Match the route against a modelled corridor by place-name keywords
+    const haystack = [
+      orig.display_name, dest.display_name,
+      route.legs[0]?.summary || '',
+      ...(route.legs[0]?.steps || []).map(s => s.name || ''),
+    ].join(' ').toLowerCase();
+    const corridor = CORRIDOR_KEYWORDS.find(c => c.keywords.some(kw => haystack.includes(kw)));
+
+    // Try GBDT model predictions for each departure hour
+    const now = new Date();
+    const offsets = [0, 1, 2, 3, 4, 5];
+    let modelUsed = 'peak-heuristic';
+    let delaysByOffset = null;
+
+    if (corridor) {
+      try {
+        const predictions = await Promise.all(offsets.map(async (offset) => {
+          const hour = (now.getHours() + offset) % 24;
+          const upstream = await fetch(`${AI_ENGINE_URL}/api/v1/traffic/predict`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ corridor_id: corridor.corridor_id, hour }),
+          });
+          if (!upstream.ok) throw new Error(`AI engine ${upstream.status}`);
+          const data = await upstream.json();
+          return data.forecast_timeline?.[0]?.predicted_speed_kmh;
+        }));
+        if (predictions.every(p => typeof p === 'number' && p > 0)) {
+          delaysByOffset = predictions.map(speed => {
+            // Slower predicted corridor speed => proportionally longer trip
+            const factor = Math.min(3.0, Math.max(1.0, corridor.normal_speed / speed));
+            return Math.min(baseMins, Math.round(baseMins * (factor - 1)));
+          });
+          modelUsed = 'gbdt';
+        }
+      } catch (err) {
+        console.warn('Departure forecast: AI engine unavailable, using heuristic:', err.message);
+      }
+    }
+
+    if (!delaysByOffset) {
+      delaysByOffset = offsets.map(offset => {
+        const hour = (now.getHours() + offset) % 24;
+        const isPeak = (hour >= 8 && hour <= 11) || (hour >= 17 && hour <= 20);
+        return Math.round(baseMins * (isPeak ? 0.35 : 0.08));
+      });
+    }
+
+    // Currently-active incidents on this route add delay to the next ~2 hours
+    const activeAlerts = await alertsStore.getActiveAlerts().catch(() => []);
+    const pseudoRoute = { title: route.legs[0]?.summary || '', segments: (route.legs[0]?.steps || []).slice(0, 8).map(s => ({ segment_name: s.name || '' })) };
+    const matchedAlert = activeAlerts.find(a => routeMatchesAlert(pseudoRoute, orig.display_name, dest.display_name, a));
+
+    const forecast = offsets.map((offset, i) => {
+      const departAt = new Date(now.getTime() + offset * 3600 * 1000);
+      const incidentDelay = matchedAlert && offset <= 1 ? matchedAlert.estimated_delay_mins : 0;
+      const delayMins = delaysByOffset[i] + incidentDelay;
+      const etaMins = baseMins + delayMins;
+      const ratio = delayMins / baseMins;
+      const congestion = ratio > 0.45 ? 'SEVERE' : ratio > 0.25 ? 'HEAVY' : ratio > 0.1 ? 'MODERATE' : 'LOW';
+      return {
+        offset_hours: offset,
+        depart_label: offset === 0 ? 'Now' : departAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }),
+        eta_mins: etaMins,
+        delay_mins: delayMins,
+        congestion,
+        incident_delay_mins: incidentDelay || undefined,
+      };
+    });
+
+    const recommended = forecast.reduce((best, f) => (f.eta_mins < best.eta_mins ? f : best), forecast[0]);
+
+    res.json({
+      origin: orig.display_name,
+      destination: dest.display_name,
+      distance_km: distKm,
+      base_eta_mins: baseMins,
+      model_used: modelUsed,
+      matched_corridor: corridor?.corridor || null,
+      active_incident: matchedAlert ? { title: matchedAlert.title, delay_mins: matchedAlert.estimated_delay_mins } : null,
+      forecast,
+      recommended: {
+        depart_label: recommended.depart_label,
+        eta_mins: recommended.eta_mins,
+        saves_mins_vs_now: forecast[0].eta_mins - recommended.eta_mins,
+      },
+    });
+  } catch (err) {
+    console.error('Departure forecast error:', err);
+    res.status(500).json({ error: 'Failed to compute departure forecast', details: err.message });
   }
 });
 

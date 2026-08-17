@@ -51,7 +51,7 @@ const createCustomIcon = (type, label) => {
   });
 };
 
-export default function RouteOptimizer() {
+export default function RouteOptimizer({ userSession = null }) {
   const { showToast } = useToast();
   const [origin, setOrigin] = useState('Central Silk Board, Bengaluru');
   const [destination, setDestination] = useState('Manyata Tech Park, Bengaluru');
@@ -60,6 +60,15 @@ export default function RouteOptimizer() {
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [routeError, setRouteError] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [savedCommutes, setSavedCommutes] = useState([]);
+  const [departForecast, setDepartForecast] = useState(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportForm, setReportForm] = useState({ title: '', location: '', zone_id: 'ZONE_CENTRAL', category: 'CONGESTION', description: '' });
+
+  const token = userSession?.access_token;
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -193,9 +202,136 @@ export default function RouteOptimizer() {
       });
   };
 
+  // "Best time to leave" — GBDT-model (or heuristic) ETA for the next 5 hours
+  const fetchDepartureForecast = (orig, dest) => {
+    setForecastLoading(true);
+    fetch('http://localhost:2001/api/v1/routes/departure-forecast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origin: orig, destination: dest })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'forecast failed');
+        return data;
+      })
+      .then((data) => {
+        setDepartForecast(data);
+        setForecastLoading(false);
+      })
+      .catch(() => {
+        setDepartForecast(null);
+        setForecastLoading(false);
+      });
+  };
+
+  const runFullSearch = (orig, dest) => {
+    fetchRouteOptimization(orig, dest);
+    fetchDepartureForecast(orig, dest);
+  };
+
   useEffect(() => {
-    fetchRouteOptimization(origin, destination);
+    runFullSearch(origin, destination);
   }, []);
+
+  // Saved commutes ("My Commute") — only for signed-in users
+  const fetchSavedCommutes = () => {
+    if (!token) return;
+    fetch('http://localhost:2001/api/v1/my-commute', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => res.json())
+      .then((data) => Array.isArray(data) && setSavedCommutes(data))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchSavedCommutes();
+  }, [token]);
+
+  const handleSaveCommute = () => {
+    const label = `${origin.split(',')[0]} → ${destination.split(',')[0]}`.slice(0, 110);
+    fetch('http://localhost:2001/api/v1/my-commute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ origin, destination, label })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not save commute');
+        return data;
+      })
+      .then(() => {
+        fetchSavedCommutes();
+        showToast('Commute saved — one tap from now on.', 'success');
+      })
+      .catch((err) => showToast(err.message, 'error'));
+  };
+
+  const handleDeleteCommute = (id, e) => {
+    e.stopPropagation();
+    fetch(`http://localhost:2001/api/v1/my-commute/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(() => setSavedCommutes((prev) => prev.filter((c) => c.id !== id)))
+      .catch(() => {});
+  };
+
+  // Browser geolocation -> reverse geocode -> origin field
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      showToast('Geolocation is not supported by this browser.', 'error');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          const name = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          setOrigin(name);
+          setLocating(false);
+          showToast('Origin set to your current location.', 'success');
+        } catch {
+          setLocating(false);
+          showToast('Could not look up your location name.', 'error');
+        }
+      },
+      () => {
+        setLocating(false);
+        showToast('Location permission denied — type your origin instead.', 'warning');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  // Citizen incident report (needs login; verified by an operator before it
+  // affects routing)
+  const handleSubmitReport = (e) => {
+    e.preventDefault();
+    setReportSubmitting(true);
+    fetch('http://localhost:2001/api/v1/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(reportForm)
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not submit the report');
+        return data;
+      })
+      .then(() => {
+        setReportSubmitting(false);
+        setShowReportModal(false);
+        setReportForm({ title: '', location: '', zone_id: 'ZONE_CENTRAL', category: 'CONGESTION', description: '' });
+        showToast('Report submitted! A traffic operator will verify it shortly.', 'success');
+      })
+      .catch((err) => {
+        setReportSubmitting(false);
+        showToast(err.message, 'error');
+      });
+  };
 
   // Update Leaflet Map when routeResult or selectedRouteId changes
   useEffect(() => {
@@ -303,7 +439,7 @@ export default function RouteOptimizer() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchRouteOptimization(origin, destination);
+    runFullSearch(origin, destination);
   };
 
   const getCongestionColor = (level) => {
@@ -373,6 +509,14 @@ export default function RouteOptimizer() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span className="mono-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span> ORIGIN POINT:
+                <button
+                  type="button"
+                  onClick={handleUseMyLocation}
+                  disabled={locating}
+                  style={{ marginLeft: 'auto', padding: '2px 10px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid #3b82f6', color: '#3b82f6', cursor: 'pointer', fontSize: '10px', fontWeight: '700', whiteSpace: 'nowrap' }}
+                >
+                  {locating ? '⏳ Locating...' : '📍 Use my location'}
+                </button>
               </span>
               <input
                 type="text"
@@ -459,7 +603,7 @@ export default function RouteOptimizer() {
               onClick={() => {
                 setOrigin('Silk Board, Bengaluru');
                 setDestination('Manyata Tech Park, Bengaluru');
-                fetchRouteOptimization('Silk Board, Bengaluru', 'Manyata Tech Park, Bengaluru');
+                runFullSearch('Silk Board, Bengaluru', 'Manyata Tech Park, Bengaluru');
               }}
               style={{ padding: '6px 12px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}
             >
@@ -470,7 +614,7 @@ export default function RouteOptimizer() {
               onClick={() => {
                 setOrigin('HITEC City, Hyderabad');
                 setDestination('Secunderabad Railway Station, Hyderabad');
-                fetchRouteOptimization('HITEC City, Hyderabad', 'Secunderabad Railway Station, Hyderabad');
+                runFullSearch('HITEC City, Hyderabad', 'Secunderabad Railway Station, Hyderabad');
               }}
               style={{ padding: '6px 12px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}
             >
@@ -481,13 +625,67 @@ export default function RouteOptimizer() {
               onClick={() => {
                 setOrigin('Connaught Place, Delhi');
                 setDestination('Cyber Hub, Gurgaon');
-                fetchRouteOptimization('Connaught Place, Delhi', 'Cyber Hub, Gurgaon');
+                runFullSearch('Connaught Place, Delhi', 'Cyber Hub, Gurgaon');
               }}
               style={{ padding: '6px 12px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}
             >
               📍 DEL: Connaught Place ➔ Cyber Hub
             </button>
+
+            {token && (
+              <>
+                <span style={{ width: '1px', height: '20px', background: 'var(--color-hairline)', flexShrink: 0 }}></span>
+                <button
+                  type="button"
+                  onClick={handleSaveCommute}
+                  style={{ padding: '6px 12px', background: 'rgba(251, 191, 36, 0.12)', border: '1px solid var(--status-moderate)', color: 'var(--status-moderate)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}
+                >
+                  ★ Save this commute
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportForm((f) => ({ ...f, location: origin.split(',').slice(0, 2).join(',') }));
+                    setShowReportModal(true);
+                  }}
+                  style={{ padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--status-severe)', color: 'var(--status-severe)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}
+                >
+                  🚩 Report a jam
+                </button>
+              </>
+            )}
           </div>
+
+          {/* My Commute — one-tap saved routes */}
+          {token && savedCommutes.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingTop: '2px' }}>
+              <span className="mono-label" style={{ fontSize: '10px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                ★ My Commute:
+              </span>
+              {savedCommutes.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setOrigin(c.origin);
+                    setDestination(c.destination);
+                    runFullSearch(c.origin, c.destination);
+                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'rgba(251, 191, 36, 0.08)', border: '1px solid var(--status-moderate)', color: 'var(--color-on-dark)', borderRadius: '14px', cursor: 'pointer', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}
+                >
+                  ★ {c.label || `${c.origin.split(',')[0]} → ${c.destination.split(',')[0]}`}
+                  <span
+                    role="button"
+                    aria-label="Delete saved commute"
+                    onClick={(e) => handleDeleteCommute(c.id, e)}
+                    style={{ color: 'var(--status-severe)', fontWeight: '800' }}
+                  >
+                    ✕
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </form>
       </div>
 
@@ -498,6 +696,74 @@ export default function RouteOptimizer() {
           style={{ padding: '16px 20px', borderLeft: '3px solid var(--status-severe)', color: 'var(--status-severe)', fontSize: '13px', fontWeight: '600' }}
         >
           ⚠️ {routeError} — try a more specific address (e.g. add the city name).
+        </div>
+      )}
+
+      {/* ⏰ Best Time to Leave — commuter's biggest question, answered by the AI model */}
+      {(forecastLoading || departForecast) && (
+        <div className="panel-card">
+          <div className="panel-header">
+            <div>
+              <span className="mono-eyebrow" style={{ color: 'var(--accent-mint-text)' }}>⏰ BEST TIME TO LEAVE</span>
+              <h3 style={{ fontSize: '18px', fontWeight: '600' }}>
+                {departForecast?.recommended?.saves_mins_vs_now > 0
+                  ? `Leave at ${departForecast.recommended.depart_label} — save ${departForecast.recommended.saves_mins_vs_now} mins vs leaving now`
+                  : 'Now is the best time to leave'}
+              </h3>
+            </div>
+            {departForecast && (
+              <span className="mono-label" style={{ fontSize: '10px', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--color-hairline)', background: 'var(--color-surface-dark-soft)' }}>
+                {departForecast.model_used === 'gbdt'
+                  ? `🤖 AI GBDT FORECAST${departForecast.matched_corridor ? ` • ${departForecast.matched_corridor.toUpperCase()}` : ''}`
+                  : '📈 PEAK-HOUR HEURISTIC'}
+              </span>
+            )}
+          </div>
+
+          {forecastLoading ? (
+            <div className="skeleton skeleton-block" style={{ height: '120px', marginTop: '12px' }} />
+          ) : (
+            <>
+              {departForecast.active_incident && (
+                <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--status-severe)' }}>
+                  🚨 Active incident on this route (+{departForecast.active_incident.delay_mins} mins for the next couple of hours): {departForecast.active_incident.title}
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                {departForecast.forecast.map((f) => {
+                  const isBest = f.depart_label === departForecast.recommended.depart_label;
+                  let barColor = 'var(--status-low)';
+                  if (f.congestion === 'MODERATE') barColor = 'var(--status-moderate)';
+                  if (f.congestion === 'HEAVY') barColor = 'var(--status-heavy)';
+                  if (f.congestion === 'SEVERE') barColor = 'var(--status-severe)';
+                  const maxEta = Math.max(...departForecast.forecast.map(x => x.eta_mins));
+                  return (
+                    <div
+                      key={f.offset_hours}
+                      style={{
+                        background: isBest ? 'rgba(52, 211, 153, 0.1)' : 'var(--color-surface-dark-soft)',
+                        border: isBest ? '1.5px solid var(--status-low)' : '1px solid var(--color-hairline)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '12px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                      }}
+                    >
+                      <span className="mono-label" style={{ fontWeight: 'bold', fontSize: '11px' }}>
+                        {isBest ? '✅ ' : ''}{f.depart_label}
+                      </span>
+                      <div style={{ width: '100%', height: '70px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', display: 'flex', alignItems: 'flex-end', padding: '3px' }}>
+                        <div style={{ width: '100%', height: `${Math.max(12, (f.eta_mins / maxEta) * 100)}%`, background: barColor, borderRadius: '2px', transition: 'height 0.4s ease' }}></div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 'bold', fontSize: '14px' }}>{f.eta_mins} min</div>
+                        <span className="mono-label" style={{ fontSize: '9px' }}>+{f.delay_mins}m traffic{f.incident_delay_mins ? ' 🚨' : ''}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -684,6 +950,102 @@ export default function RouteOptimizer() {
 
           </div>
 
+        </div>
+      )}
+
+      {/* 🚩 Citizen Report Modal */}
+      {showReportModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px',
+        }}>
+          <div className="panel-card" style={{ maxWidth: '480px', width: '100%', border: '2px solid var(--status-severe)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', paddingBottom: '12px', borderBottom: '1px solid var(--color-hairline)' }}>
+              <div>
+                <span className="mono-eyebrow" style={{ color: 'var(--status-severe)' }}>🚩 CITIZEN TRAFFIC REPORT</span>
+                <h3 style={{ fontSize: '19px', fontWeight: '700', marginTop: '2px' }}>Report a Jam / Incident</h3>
+              </div>
+              <button
+                onClick={() => setShowReportModal(false)}
+                style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', width: '32px', height: '32px', borderRadius: '50%', fontSize: '16px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitReport} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>WHAT'S HAPPENING?</span>
+                <input
+                  type="text" required value={reportForm.title}
+                  onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
+                  placeholder="e.g. Huge jam near Silk Board flyover"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', fontSize: '14px', fontWeight: '600' }}
+                />
+              </div>
+              <div>
+                <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>WHERE?</span>
+                <input
+                  type="text" required value={reportForm.location}
+                  onChange={(e) => setReportForm({ ...reportForm, location: e.target.value })}
+                  placeholder="e.g. Silk Board Junction, towards HSR"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', fontSize: '14px', fontWeight: '600' }}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>ZONE:</span>
+                  <select
+                    value={reportForm.zone_id}
+                    onChange={(e) => setReportForm({ ...reportForm, zone_id: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', fontSize: '13px', fontWeight: '600' }}
+                  >
+                    {['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'].map((z) => (
+                      <option key={z} value={z} style={{ color: '#0f172a', background: '#ffffff' }}>{z}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>TYPE:</span>
+                  <select
+                    value={reportForm.category}
+                    onChange={(e) => setReportForm({ ...reportForm, category: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', fontSize: '13px', fontWeight: '600' }}
+                  >
+                    {['CONGESTION', 'ACCIDENT', 'CONSTRUCTION', 'SIGNAL_FAILURE', 'WEATHER'].map((c) => (
+                      <option key={c} value={c} style={{ color: '#0f172a', background: '#ffffff' }}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>DETAILS (OPTIONAL):</span>
+                <textarea
+                  rows={2} value={reportForm.description}
+                  onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                  placeholder="Lane blocked? Since when? Any diversion?"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', fontSize: '13px', resize: 'vertical' }}
+                />
+              </div>
+              <p className="mono-label" style={{ fontSize: '10px', lineHeight: 1.5 }}>
+                A traffic operator verifies every citizen report before it affects live routing and public alerts.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '10px', borderTop: '1px solid var(--color-hairline)' }}>
+                <button
+                  type="button" onClick={() => setShowReportModal(false)}
+                  style={{ padding: '10px 18px', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit" disabled={reportSubmitting}
+                  style={{ padding: '10px 22px', background: 'var(--status-severe)', color: '#ffffff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
+                >
+                  {reportSubmitting ? 'Submitting...' : '🚩 Submit Report'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
