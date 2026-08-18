@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './styles/theme.css';
-import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard } from 'lucide-react';
+import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard, Radio } from 'lucide-react';
 import { useToast } from './context/ToastContext.jsx';
 
 const CONGESTION_COLORS = {
@@ -28,6 +28,7 @@ import GovHeader from './components/GovHeader';
 import GovFooter from './components/GovFooter';
 import NoticeTicker from './components/NoticeTicker';
 import CommandCenter from './components/CommandCenter';
+import SensorManagement from './components/SensorManagement';
 
 const inputStyle = {
   width: '100%',
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { tab: 'routes', label: 'Route Optimizer', Icon: Navigation, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
   { tab: 'my-commute', label: 'My Commute', Icon: Star, roles: ['COMMUTER'] },
   { tab: 'alerts', label: 'Incident Control', Icon: AlertTriangle, roles: ['ADMIN', 'OPERATOR'] },
+  { tab: 'sensors', label: 'Sensor Management', Icon: Radio, roles: ['ADMIN'] },
   { tab: 'safety', label: 'Safety Center', Icon: ShieldAlert, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
   { tab: 'analytics', label: 'Analytics', Icon: BarChart2, roles: ['ADMIN'] },
   { tab: 'users', label: 'User Management', Icon: Users, roles: ['ADMIN'] },
@@ -470,6 +472,7 @@ export default function App() {
                       {activeTab === 'routes' && `Smart Route Optimization & Travel Time`}
                       {activeTab === 'my-commute' && `Smart Daily Commute Planner`}
                       {activeTab === 'alerts' && `Incident Management & Dispatch`}
+                      {activeTab === 'sensors' && `Sensor Network Monitoring & Health`}
                       {activeTab === 'safety' && `Emergency SOS & Community Safety`}
                       {activeTab === 'analytics' && `Traffic Analytics & Heatmaps`}
                       {activeTab === 'users' && `RBAC Accounts & Zone Administration`}
@@ -631,6 +634,9 @@ export default function App() {
               <main className="main-content animate-fade-in" key={activeTab}>
                 {activeTab === 'command' && (
                   <CommandCenter userSession={userSession} onNavigate={setActiveTab} />
+                )}
+                {activeTab === 'sensors' && (
+                  <SensorManagement userSession={userSession} />
                 )}
                 {activeTab === 'dashboard' && (
                   <>
