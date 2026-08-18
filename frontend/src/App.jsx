@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './styles/theme.css';
-import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard, Radio } from 'lucide-react';
+import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard, Radio, ScrollText, Settings } from 'lucide-react';
 import { useToast } from './context/ToastContext.jsx';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +30,8 @@ import GovFooter from './components/GovFooter';
 import NoticeTicker from './components/NoticeTicker';
 import CommandCenter from './components/CommandCenter';
 import SensorManagement from './components/SensorManagement';
+import AuditLogs from './components/AuditLogs';
+import SystemSettings from './components/SystemSettings';
 
 const inputStyle = {
   width: '100%',
@@ -53,6 +55,8 @@ const NAV_ITEMS = [
   { tab: 'safety', labelKey: 'navigation.safetyCenter', Icon: ShieldAlert, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
   { tab: 'analytics', labelKey: 'navigation.analytics', Icon: BarChart2, roles: ['ADMIN'] },
   { tab: 'users', labelKey: 'navigation.userManagement', Icon: Users, roles: ['ADMIN'] },
+  { tab: 'audit', labelKey: 'navigation.auditLogs', Icon: ScrollText, roles: ['ADMIN'] },
+  { tab: 'settings', labelKey: 'navigation.systemSettings', Icon: Settings, roles: ['ADMIN'] },
 ];
 
 export default function App() {
@@ -478,6 +482,8 @@ export default function App() {
                       {activeTab === 'safety' && t('safetyCenter.title')}
                       {activeTab === 'analytics' && t('analytics.eyebrow')}
                       {activeTab === 'users' && t('userManagement.eyebrow')}
+                      {activeTab === 'audit' && t('auditLogs.eyebrow', 'Administrative Action History')}
+                      {activeTab === 'settings' && t('systemSettings.eyebrow', 'Platform Configuration')}
                     </span>
                     <h1 className="display-title" style={{ marginTop: '4px' }}>
                       {activeTab === 'command' ? t('dashboard.commandTitle') : t('dashboard.systemTitle')}
@@ -808,7 +814,9 @@ export default function App() {
                 {activeTab === 'alerts' && <AlertsManager userSession={userSession} />}
                 {activeTab === 'safety' && <SafetyCenter userSession={userSession} />}
                 {activeTab === 'analytics' && <AnalyticsDashboard />}
-                {activeTab === 'users' && <UserManagement userSession={userSession} />}
+                {activeTab === 'users' && <UserManagement userSession={userSession} onNavigate={setActiveTab} />}
+                {activeTab === 'audit' && <AuditLogs userSession={userSession} />}
+                {activeTab === 'settings' && <SystemSettings userSession={userSession} />}
               </main>
                 </div>
               </div>

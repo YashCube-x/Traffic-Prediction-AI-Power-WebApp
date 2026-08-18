@@ -14,7 +14,7 @@ import { LANGUAGES, STORAGE_KEY } from '../i18n';
 // reloads the page - i18next re-renders every t()-consuming component in
 // place, so route/tab/form state is untouched.
 export default function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -63,7 +63,7 @@ export default function LanguageSwitcher() {
       {open && (
         <div className="gov-lang-dropdown" role="listbox" aria-label="Language">
           <div className="gov-lang-dropdown-header">
-            <Globe size={12} /> Language
+            <Globe size={12} /> {t('common.language')}
           </div>
           {LANGUAGES.map((lang) => (
             <button

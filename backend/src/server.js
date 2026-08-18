@@ -16,6 +16,7 @@ const statsRoutes = require('./routes/stats');
 const safetyRoutes = require('./routes/safety');
 const placesRoutes = require('./routes/places');
 const systemRoutes = require('./routes/system');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const PORT = process.env.PORT || 2001;
@@ -40,6 +41,7 @@ app.use('/api/v1', statsRoutes);
 app.use('/api/v1', safetyRoutes);
 app.use('/api/v1', placesRoutes);
 app.use('/api/v1', systemRoutes);
+app.use('/api/v1', settingsRoutes);
 
 
 

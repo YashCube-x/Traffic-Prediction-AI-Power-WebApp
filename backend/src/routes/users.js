@@ -121,12 +121,42 @@ router.patch('/users/:id', ...adminOnly, async (req, res) => {
 });
 
 // GET /api/v1/audit — latest privileged actions (ADMIN only)
+// GET /api/v1/audit — supports filtering for the Audit Logs page.
+// ?user=<substring of actor_email> &action=<substring of action>
+// &from=<ISO date> &to=<ISO date> &limit=<default 200, max 500>
+// "Module" (Incident Control, User Management, ...) is derived from the
+// action prefix on the frontend rather than stored as its own column —
+// every action already encodes it (ALERT_*, USER_*, REPORT_*, ...).
 router.get('/audit', ...adminOnly, async (req, res) => {
+  const { user, action, from, to } = req.query;
+  const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 200));
+
+  const conditions = [];
+  const params = [];
+  if (user) {
+    params.push(`%${user}%`);
+    conditions.push(`actor_email ILIKE $${params.length}`);
+  }
+  if (action) {
+    params.push(`%${action}%`);
+    conditions.push(`action ILIKE $${params.length}`);
+  }
+  if (from) {
+    params.push(from);
+    conditions.push(`created_at >= $${params.length}`);
+  }
+  if (to) {
+    params.push(to);
+    conditions.push(`created_at <= $${params.length}`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  params.push(limit);
+
   try {
     const { rows } = await pool.query(`
       SELECT id, actor_email, actor_role, action, target, details, ip, created_at
-      FROM audit_log ORDER BY created_at DESC, id DESC LIMIT 100
-    `);
+      FROM audit_log ${where} ORDER BY created_at DESC, id DESC LIMIT $${params.length}
+    `, params);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: 'Could not fetch audit log', details: err.message });

@@ -17,7 +17,7 @@ const inputStyle = {
   fontWeight: '600',
 };
 
-export default function UserManagement({ userSession }) {
+export default function UserManagement({ userSession, onNavigate }) {
   const { showToast } = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -316,7 +316,8 @@ export default function UserManagement({ userSession }) {
       {/* Government-portal additions: system stats, CSV exports, circulars */}
       <GovAdminExtras userSession={userSession} />
 
-      {/* Audit Log Panel */}
+      {/* Audit Log Panel — quick glance only; the dedicated Audit Logs page
+          (with user/action/module/date filters) is the full view. */}
       <div className="panel-card">
         <div className="panel-header">
           <div>
@@ -325,12 +326,22 @@ export default function UserManagement({ userSession }) {
             </span>
             <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Recent Privileged Actions</h3>
           </div>
-          <button
-            onClick={fetchAudit}
-            style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', cursor: 'pointer', fontSize: '11px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <RefreshCw size={12} /> Refresh
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={fetchAudit}
+              style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', cursor: 'pointer', fontSize: '11px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <RefreshCw size={12} /> Refresh
+            </button>
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('audit')}
+                style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--accent-orange)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}
+              >
+                Open Full Audit Logs →
+              </button>
+            )}
+          </div>
         </div>
 
         {auditLoading ? (
@@ -338,7 +349,7 @@ export default function UserManagement({ userSession }) {
         ) : auditEntries.length === 0 ? (
           <p className="mono-label" style={{ marginTop: '12px', fontSize: '12px' }}>No audit entries yet — actions like logins, incident logging and account changes will appear here.</p>
         ) : (
-          <div className="table-responsive-wrapper" style={{ marginTop: '12px', maxHeight: '340px', overflowY: 'auto' }}>
+          <div className="table-responsive-wrapper" style={{ marginTop: '12px' }}>
             <table className="data-table">
               <thead>
                 <tr>
@@ -346,11 +357,10 @@ export default function UserManagement({ userSession }) {
                   <th>ACTOR</th>
                   <th>ACTION</th>
                   <th>TARGET</th>
-                  <th>IP</th>
                 </tr>
               </thead>
               <tbody>
-                {auditEntries.map((e) => (
+                {auditEntries.slice(0, 5).map((e) => (
                   <tr key={e.id}>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', whiteSpace: 'nowrap' }}>
                       {new Date(e.created_at).toLocaleString()}
@@ -365,7 +375,6 @@ export default function UserManagement({ userSession }) {
                       </span>
                     </td>
                     <td style={{ fontSize: '12px' }}>{e.target || '—'}</td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{e.ip || '—'}</td>
                   </tr>
                 ))}
               </tbody>

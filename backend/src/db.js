@@ -161,6 +161,10 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    // Links an approved report to the live alert it became, so the reporting
+    // citizen can track real status (pending / in progress / resolved)
+    // instead of only knowing it was "approved" once.
+    await client.query(`ALTER TABLE citizen_reports ADD COLUMN IF NOT EXISTS alert_id VARCHAR(30);`);
 
     // Safety Center SOS alerts — a logged-in user's one-tap distress signal.
     // Zone-scoped like citizen_reports so operators only see their own area.
@@ -203,6 +207,26 @@ async function initDatabase() {
       );
     `);
     await client.query(`INSERT INTO site_stats (stat_key, stat_value) VALUES ('visitors', 0) ON CONFLICT DO NOTHING;`);
+
+    // Admin-editable platform configuration (System Settings page). Value is
+    // stored as JSON text so different settings can hold different shapes
+    // (a number, a string, or a nested object) in one generic table.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS system_settings (
+        setting_key VARCHAR(50) PRIMARY KEY,
+        setting_value TEXT NOT NULL,
+        updated_by VARCHAR(255),
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.query(`
+      INSERT INTO system_settings (setting_key, setting_value) VALUES
+        ('city_name', '"Bengaluru"'),
+        ('target_avg_speed_kmh', '35'),
+        ('congestion_thresholds', '{"low_max":40,"moderate_max":65,"high_max":85}'),
+        ('alert_settings', '{"critical_incident_alerts":true,"sensor_offline_alerts":true,"prediction_service_alerts":true,"severe_congestion_alerts":true}')
+      ON CONFLICT DO NOTHING;
+    `);
 
     // Audit trail of privileged actions (who did what, when, from where)
     await client.query(`

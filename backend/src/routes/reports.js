@@ -53,6 +53,33 @@ router.post('/reports', reportLimiter, verifyToken, async (req, res) => {
   }
 });
 
+// GET /my-reports — the logged-in citizen's own submissions, with live
+// status: PENDING (awaiting review) / DISMISSED / or, once approved, the
+// real lifecycle of the alert it became (IN_PROGRESS while the alert is
+// REPORTED/VERIFIED/DISPATCHED/RESPONDING, RESOLVED once closed out).
+router.get('/my-reports', verifyToken, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT r.*, a.status AS alert_status, a.estimated_delay_mins AS alert_delay_mins
+      FROM citizen_reports r
+      LEFT JOIN alerts a ON a.alert_id = r.alert_id
+      WHERE r.reporter_id = $1
+      ORDER BY r.created_at DESC LIMIT 50;
+    `, [req.user.id]);
+
+    const withTrackingStatus = rows.map((r) => {
+      let tracking_status = r.status; // PENDING | DISMISSED
+      if (r.status === 'APPROVED') {
+        tracking_status = r.alert_status === 'RESOLVED' ? 'RESOLVED' : 'IN_PROGRESS';
+      }
+      return { ...r, tracking_status };
+    });
+    res.json(withTrackingStatus);
+  } catch (err) {
+    res.status(503).json({ error: 'Could not fetch your reports', details: err.message });
+  }
+});
+
 // GET /reports — operator (own zone) / admin review queue.
 // ?status=PENDING (default) | APPROVED | DISMISSED | ALL
 router.get('/reports', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), async (req, res) => {
@@ -114,8 +141,8 @@ router.patch('/reports/:id/approve', verifyToken, requireRoles(['ADMIN', 'OPERAT
     });
 
     await pool.query(
-      `UPDATE citizen_reports SET status = 'APPROVED', reviewed_by = $1 WHERE id = $2`,
-      [req.user.email, report.id]
+      `UPDATE citizen_reports SET status = 'APPROVED', reviewed_by = $1, alert_id = $2 WHERE id = $3`,
+      [req.user.email, alert.alert_id, report.id]
     );
 
     audit(req.user, 'REPORT_APPROVE', `report#${report.id}`, { became_alert: alert.alert_id }, req);
