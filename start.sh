@@ -40,15 +40,15 @@ else
   echo "ℹ️  FastAPI uvicorn not detected in environment. Express Gateway fallback active."
 fi
 
-# 3. Start React.js Frontend Dashboard (Vite Port 5173)
-echo "🎨 Starting React Frontend Dashboard on http://localhost:5173 ..."
+# 3. Start React.js Frontend Dashboard (Vite Port 2000, see frontend/vite.config.js)
+echo "🎨 Starting React Frontend Dashboard on http://localhost:2000 ..."
 (cd "$ROOT_DIR/frontend" && npm run dev) &
 FRONTEND_PID=$!
 
 echo ""
 echo "=========================================================="
 echo "✨ TrafficVision AI is running!"
-echo "🌐 Frontend Dashboard:  http://localhost:5173"
+echo "🌐 Frontend Dashboard:  http://localhost:2000"
 echo "🔌 Express API Gateway: http://localhost:2001"
 echo "🐍 FastAPI AI Docs:     http://localhost:8000/docs (if active)"
 echo "Press Ctrl+C to stop all servers."

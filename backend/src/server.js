@@ -13,6 +13,8 @@ const reportsRoutes = require('./routes/reports');
 const commuteRoutes = require('./routes/commute');
 const noticesRoutes = require('./routes/notices');
 const statsRoutes = require('./routes/stats');
+const safetyRoutes = require('./routes/safety');
+const systemRoutes = require('./routes/system');
 
 const app = express();
 const PORT = process.env.PORT || 2001;
@@ -34,6 +36,8 @@ app.use('/api/v1', reportsRoutes);
 app.use('/api/v1', commuteRoutes);
 app.use('/api/v1', noticesRoutes);
 app.use('/api/v1', statsRoutes);
+app.use('/api/v1', safetyRoutes);
+app.use('/api/v1', systemRoutes);
 
 
 

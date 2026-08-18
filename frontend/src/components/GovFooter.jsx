@@ -31,8 +31,9 @@ export default function GovFooter() {
         </div>
         <div className="gov-footer-col">
           <strong>Citizen Helpline</strong>
-          <p><Phone size={12} /> Traffic Police: <strong>103</strong></p>
-          <p><Phone size={12} /> Emergency: <strong>112</strong></p>
+          <p><Phone size={12} /> Traffic Police: <a href="tel:103" style={{ color: 'inherit' }}><strong>103</strong></a></p>
+          <p><Phone size={12} /> Emergency: <a href="tel:112" style={{ color: 'inherit' }}><strong>112</strong></a></p>
+          <p><Phone size={12} /> Women Helpline: <a href="tel:181" style={{ color: 'inherit' }}><strong>181</strong></a></p>
         </div>
         <div className="gov-footer-col">
           <strong>Policies</strong>

@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './styles/theme.css';
-import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users } from 'lucide-react';
+import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert } from 'lucide-react';
 import { useToast } from './context/ToastContext.jsx';
 
 const CONGESTION_COLORS = {
@@ -19,6 +19,8 @@ import RouteOptimizer from './components/RouteOptimizer';
 import AlertsManager from './components/AlertsManager';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import UserManagement from './components/UserManagement';
+import SafetyCenter from './components/SafetyCenter';
+import SOSButton from './components/SOSButton';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import PublicRoutePage from './components/PublicRoutePage';
 import GovHeader from './components/GovHeader';
@@ -41,6 +43,7 @@ const NAV_ITEMS = [
   { tab: 'predictions', label: 'Traffic Forecasting', Icon: TrendingUp, roles: ['ADMIN', 'OPERATOR'] },
   { tab: 'routes', label: 'Route Optimizer', Icon: Navigation, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
   { tab: 'alerts', label: 'Incident Control', Icon: AlertTriangle, roles: ['ADMIN', 'OPERATOR'] },
+  { tab: 'safety', label: 'Safety Center', Icon: ShieldAlert, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
   { tab: 'analytics', label: 'Analytics', Icon: BarChart2, roles: ['ADMIN'] },
   { tab: 'users', label: 'User Management', Icon: Users, roles: ['ADMIN'] },
 ];
@@ -460,6 +463,7 @@ export default function App() {
                       {activeTab === 'predictions' && `Traffic Forecasting & Bottleneck Prediction`}
                       {activeTab === 'routes' && `Smart Route Optimization & Travel Time`}
                       {activeTab === 'alerts' && `Incident Management & Dispatch`}
+                      {activeTab === 'safety' && `Emergency SOS & Community Safety`}
                       {activeTab === 'analytics' && `Traffic Analytics & Heatmaps`}
                       {activeTab === 'users' && `RBAC Accounts & Zone Administration`}
                     </span>
@@ -783,12 +787,14 @@ export default function App() {
                 {activeTab === 'predictions' && <AIForecasting />}
                 {activeTab === 'routes' && <RouteOptimizer userSession={userSession} />}
                 {activeTab === 'alerts' && <AlertsManager userSession={userSession} />}
+                {activeTab === 'safety' && <SafetyCenter userSession={userSession} />}
                 {activeTab === 'analytics' && <AnalyticsDashboard />}
                 {activeTab === 'users' && <UserManagement userSession={userSession} />}
               </main>
                 </div>
               </div>
               <GovFooter />
+              <SOSButton userSession={userSession} variant="floating" />
             </div>
             )
           ) : (

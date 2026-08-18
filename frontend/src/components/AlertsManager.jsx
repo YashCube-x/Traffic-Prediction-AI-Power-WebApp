@@ -618,6 +618,8 @@ export default function AlertsManager({ userSession }) {
                     <option value="CONSTRUCTION" style={{ color: '#0f172a', background: '#ffffff' }}>CONSTRUCTION</option>
                     <option value="SIGNAL_FAILURE" style={{ color: '#0f172a', background: '#ffffff' }}>SIGNAL_FAILURE</option>
                     <option value="WEATHER" style={{ color: '#0f172a', background: '#ffffff' }}>WEATHER</option>
+                    <option value="HARASSMENT" style={{ color: '#0f172a', background: '#ffffff' }}>HARASSMENT</option>
+                    <option value="UNSAFE_AREA" style={{ color: '#0f172a', background: '#ffffff' }}>UNSAFE_AREA</option>
                   </select>
                 </div>
 

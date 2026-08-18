@@ -21,10 +21,27 @@ function cached(key, ttlMs, producer) {
   });
 }
 
+// Local request counter (resets at midnight). This is an ESTIMATE of our own
+// call volume for the health dashboard, not the true remaining quota — the
+// free tier's API doesn't expose that.
+let requestCount = 0;
+let countSince = new Date().toDateString();
+
 async function getJson(url) {
+  const today = new Date().toDateString();
+  if (today !== countSince) {
+    countSince = today;
+    requestCount = 0;
+  }
+  requestCount += 1;
+
   const res = await fetch(url);
   if (!res.ok) throw new Error(`TomTom ${res.status}`);
   return res.json();
+}
+
+function getUsageStats() {
+  return { requests_today_estimate: requestCount, counting_since: countSince, daily_free_limit: 2500 };
 }
 
 /**
@@ -102,4 +119,4 @@ function calculateRoute(origLat, origLon, destLat, destLon, { alternatives = 2, 
   });
 }
 
-module.exports = { isConfigured, getFlowSegment, calculateRoute };
+module.exports = { isConfigured, getFlowSegment, calculateRoute, getUsageStats };

@@ -1014,8 +1014,16 @@ export default function RouteOptimizer({ userSession = null }) {
                     onChange={(e) => setReportForm({ ...reportForm, category: e.target.value })}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', fontSize: '13px', fontWeight: '600' }}
                   >
-                    {['CONGESTION', 'ACCIDENT', 'CONSTRUCTION', 'SIGNAL_FAILURE', 'WEATHER'].map((c) => (
-                      <option key={c} value={c} style={{ color: '#0f172a', background: '#ffffff' }}>{c}</option>
+                    {[
+                      ['CONGESTION', 'CONGESTION'],
+                      ['ACCIDENT', 'ACCIDENT'],
+                      ['CONSTRUCTION', 'CONSTRUCTION'],
+                      ['SIGNAL_FAILURE', 'SIGNAL_FAILURE'],
+                      ['WEATHER', 'WEATHER'],
+                      ['HARASSMENT', 'Harassment / Safety Concern'],
+                      ['UNSAFE_AREA', 'Unsafe / Poorly Lit Area'],
+                    ].map(([c, l]) => (
+                      <option key={c} value={c} style={{ color: '#0f172a', background: '#ffffff' }}>{l}</option>
                     ))}
                   </select>
                 </div>

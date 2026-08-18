@@ -1045,13 +1045,17 @@ textarea:focus-visible,
 .gov-header-titles {
   display: flex;
   flex-direction: column;
-  line-height: 1.25;
+  gap: 2px;
   min-width: 0;
 }
 
 .gov-title-kn,
 .gov-title-hi {
   font-size: 11px;
+  /* Kannada/Devanagari vowel signs and conjuncts extend well beyond Latin
+     line metrics - a tight line-height makes adjacent lines visually
+     collide even though their CSS boxes don't overlap. */
+  line-height: 1.9;
   color: var(--color-body);
   white-space: nowrap;
   overflow: hidden;
@@ -1061,6 +1065,7 @@ textarea:focus-visible,
 .gov-title-en {
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.4;
   color: var(--color-on-dark);
   letter-spacing: 0.2px;
   white-space: nowrap;
@@ -1220,6 +1225,14 @@ body.gov-high-contrast * {
   .gov-header-bar { padding: 8px 14px; }
   .gov-title-kn, .gov-title-hi { display: none; }
   .gov-datetime { display: none; }
+}
+
+.spin {
+  animation: spin-rotate 0.9s linear infinite;
+}
+@keyframes spin-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 

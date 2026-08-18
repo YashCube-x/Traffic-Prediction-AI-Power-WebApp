@@ -47,6 +47,10 @@ async function initDatabase() {
     // Migrate pre-existing tables that were created before zone-scoping
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS assigned_zone VARCHAR(30);`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;`);
+    // Safety Center: phone + emergency contact, used by the SOS feature
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(100);`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(20);`);
     // "USR-" + uuid is 40 chars; original schema was VARCHAR(36)
     await client.query(`ALTER TABLE users ALTER COLUMN id TYPE VARCHAR(50);`);
     // The table may originally have been created by SQLAlchemy, whose
@@ -132,6 +136,26 @@ async function initDatabase() {
         description TEXT,
         status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
         reviewed_by VARCHAR(255),
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Safety Center SOS alerts — a logged-in user's one-tap distress signal.
+    // Zone-scoped like citizen_reports so operators only see their own area.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sos_alerts (
+        id BIGSERIAL PRIMARY KEY,
+        user_id VARCHAR(50) NOT NULL,
+        user_email VARCHAR(255) NOT NULL,
+        user_phone VARCHAR(20),
+        emergency_contact_name VARCHAR(100),
+        emergency_contact_phone VARCHAR(20),
+        location VARCHAR(255),
+        latitude DOUBLE PRECISION,
+        longitude DOUBLE PRECISION,
+        zone_id VARCHAR(30),
+        status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+        resolved_by VARCHAR(255),
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);

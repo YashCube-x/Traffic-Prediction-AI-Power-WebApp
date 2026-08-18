@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserPlus, ShieldCheck, Copy, ScrollText, RefreshCw } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
 import GovAdminExtras from './GovAdminExtras.jsx';
+import SystemHealthMonitor from './SystemHealthMonitor.jsx';
 
 const ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
 
@@ -143,6 +144,9 @@ export default function UserManagement({ userSession }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Control room — live status of every backend dependency */}
+      <SystemHealthMonitor userSession={userSession} />
+
       {/* Header */}
       <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>

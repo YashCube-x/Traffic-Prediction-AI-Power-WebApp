@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Phone } from 'lucide-react';
 import RouteOptimizer from './RouteOptimizer';
 import NoticeTicker from './NoticeTicker';
 import GovFooter from './GovFooter';
@@ -46,6 +46,24 @@ export default function PublicRoutePage({ userSession = null }) {
         <RouteOptimizer userSession={userSession} />
       </main>
       <GovFooter />
+
+      {/* Emergency quick-dial for citizens browsing without an account —
+          full SOS (with location + operator alerting) needs sign-in, but a
+          call to 112 should never be gated behind login. */}
+      <a
+        href="tel:112"
+        aria-label="Call emergency helpline 112"
+        title="Emergency: 112"
+        style={{
+          position: 'fixed', right: '20px', bottom: '20px', zIndex: 1500,
+          width: '58px', height: '58px', borderRadius: '50%',
+          background: 'var(--status-severe)', color: '#fff', border: '3px solid rgba(255,255,255,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 8px 24px rgba(239, 68, 68, 0.5)', textDecoration: 'none',
+        }}
+      >
+        <Phone size={24} />
+      </a>
     </div>
   );
 }

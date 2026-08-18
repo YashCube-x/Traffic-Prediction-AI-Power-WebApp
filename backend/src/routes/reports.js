@@ -14,7 +14,7 @@ const { audit } = require('../audit');
 const { broadcast } = require('../events');
 
 const VALID_ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
-const VALID_CATEGORIES = ['ACCIDENT', 'CONGESTION', 'CONSTRUCTION', 'SIGNAL_FAILURE', 'WEATHER'];
+const VALID_CATEGORIES = ['ACCIDENT', 'CONGESTION', 'CONSTRUCTION', 'SIGNAL_FAILURE', 'WEATHER', 'HARASSMENT', 'UNSAFE_AREA'];
 
 const reportLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
