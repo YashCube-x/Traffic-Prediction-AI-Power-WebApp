@@ -471,28 +471,19 @@ export default function App() {
                 </aside>
 
                 <div className="main-column">
-              {/* Hero Header */}
+              {/* Hero Header — only for tabs without their own in-page title.
+                  Every other tab's component (CommandCenter, SensorManagement,
+                  SafetyCenter, AlertsManager, UserManagement, AuditLogs,
+                  AnnouncementsManager, SystemSettings, etc.) already renders
+                  its own eyebrow + heading, so showing this generic banner on
+                  top of those duplicated/mismatched the page you were on. */}
+              {activeTab === 'dashboard' && (
               <header className="hero-band">
                 <div className="hero-grid">
                   <div>
-                    <span className="mono-eyebrow">
-                      {activeTab === 'command' && t('dashboard.commandEyebrow')}
-                      {activeTab === 'dashboard' && t('dashboard.eyebrow')}
-                      {activeTab === 'predictions' && t('predictions.eyebrow')}
-                      {activeTab === 'routes' && t('routeOptimizer.subtitle')}
-                      {activeTab === 'my-commute' && t('myCommutePage.eyebrow')}
-                      {activeTab === 'reports' && t('myReportsPage.eyebrow')}
-                      {activeTab === 'alerts' && t('incidentControl.title')}
-                      {activeTab === 'sensors' && t('sensorManagement.eyebrow')}
-                      {activeTab === 'safety' && t('safetyCenter.title')}
-                      {activeTab === 'analytics' && t('analytics.eyebrow')}
-                      {activeTab === 'users' && t('userManagement.eyebrow')}
-                      {activeTab === 'audit' && t('auditLogs.eyebrow', 'Administrative Action History')}
-                      {activeTab === 'announcements' && t('announcements.eyebrow', 'Broadcast a Notice or Circular')}
-                      {activeTab === 'settings' && t('systemSettings.eyebrow', 'Platform Configuration')}
-                    </span>
+                    <span className="mono-eyebrow">{t('dashboard.eyebrow')}</span>
                     <h1 className="display-title" style={{ marginTop: '4px' }}>
-                      {activeTab === 'command' ? t('dashboard.commandTitle') : t('dashboard.systemTitle')}
+                      {t('dashboard.systemTitle')}
                     </h1>
                   </div>
                   {userRole === 'ADMIN' && (
@@ -504,6 +495,7 @@ export default function App() {
                   )}
                 </div>
               </header>
+              )}
 
               {/* Add Sensor Node Modal */}
               {showAddSensorModal && (
