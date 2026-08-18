@@ -4,15 +4,20 @@ import { useToast } from '../context/ToastContext.jsx';
 
 const API = 'http://localhost:2001/api/v1';
 const VALID_ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
+const ZONE_LABELS = {
+  ZONE_CENTRAL: 'Central Zone', ZONE_NORTH: 'North Zone', ZONE_SOUTH: 'South Zone',
+  ZONE_EAST: 'East Zone', ZONE_WEST: 'West Zone',
+};
 const CATEGORIES = [
-  ['CONGESTION', 'CONGESTION'],
-  ['ACCIDENT', 'ACCIDENT'],
-  ['CONSTRUCTION', 'CONSTRUCTION'],
-  ['SIGNAL_FAILURE', 'SIGNAL_FAILURE'],
-  ['WEATHER', 'WEATHER'],
+  ['CONGESTION', 'Traffic Jam'],
+  ['ACCIDENT', 'Accident'],
+  ['CONSTRUCTION', 'Road Construction'],
+  ['SIGNAL_FAILURE', 'Signal Not Working'],
+  ['WEATHER', 'Bad Weather'],
   ['HARASSMENT', 'Harassment / Safety Concern'],
   ['UNSAFE_AREA', 'Unsafe / Poorly Lit Area'],
 ];
+const CATEGORY_LABELS = Object.fromEntries(CATEGORIES);
 
 const STATUS_META = {
   PENDING: { label: 'Pending Review', color: 'var(--status-moderate)', bg: 'rgba(251, 191, 36, 0.12)', Icon: Clock },
@@ -49,6 +54,13 @@ export default function MyReportsPage({ userSession = null }) {
   };
 
   useEffect(() => { fetchMyReports(); }, [token]);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const handleEscape = (e) => { if (e.key === 'Escape') setShowModal(false); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showModal]);
 
   // Live updates: as soon as an operator reviews a report, or the resulting
   // alert's lifecycle moves (dispatched/responding/resolved), refresh.
@@ -136,7 +148,7 @@ export default function MyReportsPage({ userSession = null }) {
               return (
                 <div key={r.id} style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', borderRadius: 'var(--radius-md)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                    <span className="mono-eyebrow" style={{ fontSize: '10px' }}>{r.category} • {r.zone_id}</span>
+                    <span className="mono-eyebrow" style={{ fontSize: '10px' }}>{CATEGORY_LABELS[r.category] || r.category} • {ZONE_LABELS[r.zone_id] || r.zone_id}</span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', borderRadius: '12px', background: meta.bg, color: meta.color, fontSize: '10px', fontWeight: '800', whiteSpace: 'nowrap' }}>
                       <StatusIcon size={11} className={r.tracking_status === 'IN_PROGRESS' ? 'spin' : ''} /> {meta.label}
                     </span>
@@ -157,8 +169,8 @@ export default function MyReportsPage({ userSession = null }) {
 
       {/* New Report modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
-          <div className="panel-card" style={{ maxWidth: '480px', width: '100%', border: '2px solid var(--accent-orange)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
+        <div onClick={() => setShowModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
+          <div className="panel-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', width: '100%', border: '2px solid var(--accent-orange)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', paddingBottom: '12px', borderBottom: '1px solid var(--color-hairline)' }}>
               <div>
                 <span className="mono-eyebrow" style={{ color: 'var(--accent-orange)' }}>🚩 NEW REPORT</span>
@@ -180,7 +192,7 @@ export default function MyReportsPage({ userSession = null }) {
                 <div>
                   <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px' }}>ZONE:</span>
                   <select value={form.zone_id} onChange={(e) => setForm({ ...form, zone_id: e.target.value })} style={fieldStyle}>
-                    {VALID_ZONES.map((z) => <option key={z} value={z} style={{ color: '#0f172a', background: '#fff' }}>{z}</option>)}
+                    {VALID_ZONES.map((z) => <option key={z} value={z} style={{ color: '#0f172a', background: '#fff' }}>{ZONE_LABELS[z]}</option>)}
                   </select>
                 </div>
                 <div>

@@ -3,6 +3,14 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useToast } from '../context/ToastContext.jsx';
 
+// Turns backend codes like "ZONE_CENTRAL" / "SIGNAL_FAILURE" into plain
+// words ("Central Zone" / "Signal Failure") for display to commuters.
+const ZONE_LABELS = {
+  ZONE_CENTRAL: 'Central Zone', ZONE_NORTH: 'North Zone', ZONE_SOUTH: 'South Zone',
+  ZONE_EAST: 'East Zone', ZONE_WEST: 'West Zone',
+};
+const humanize = (code) => (code || '').replace(/_/g, ' ').replace(/\w\S*/g, (w) => w[0] + w.slice(1).toLowerCase());
+
 // Custom Teardrop GPS Pin Marker Icons (Matching User Design)
 const createCustomIcon = (type, label) => {
   const isStart = type === 'start';
@@ -96,6 +104,13 @@ export default function RouteOptimizer({ userSession = null }) {
   useEffect(() => {
     fetchActiveAlerts();
   }, []);
+
+  useEffect(() => {
+    if (!showReportModal) return;
+    const handleEscape = (e) => { if (e.key === 'Escape') setShowReportModal(false); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showReportModal]);
 
   // Live updates: when an operator logs/resolves an incident anywhere, the
   // warning banner refreshes instantly without a page reload.
@@ -472,7 +487,7 @@ export default function RouteOptimizer({ userSession = null }) {
             <span style={{ fontSize: '22px' }}>🚨</span>
             <div>
               <div style={{ fontSize: '11px', fontWeight: '800', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                LIVE CITY TRAFFIC INCIDENT ALERT — {activeAlerts[0].category}
+                LIVE TRAFFIC ALERT — {humanize(activeAlerts[0].category)}
               </div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-on-dark)', marginTop: '2px' }}>
                 {activeAlerts[0].title} ({activeAlerts[0].location})
@@ -497,7 +512,7 @@ export default function RouteOptimizer({ userSession = null }) {
             </h2>
           </div>
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', padding: '4px 10px', borderRadius: '6px', background: 'rgba(52, 211, 153, 0.15)', color: 'var(--status-low)', border: '1px solid var(--status-low)' }}>
-            {routeResult?.routing_engine === 'TOMTOM_LIVE' ? '🛰️ LIVE TRAFFIC ● TOMTOM' : 'GIS ROUTER ● ONLINE'}
+            {routeResult?.routing_engine === 'TOMTOM_LIVE' ? '🛰️ LIVE TRAFFIC' : '● ONLINE'}
           </span>
         </div>
 
@@ -706,9 +721,11 @@ export default function RouteOptimizer({ userSession = null }) {
             <div>
               <span className="mono-eyebrow" style={{ color: 'var(--accent-mint-text)' }}>⏰ BEST TIME TO LEAVE</span>
               <h3 style={{ fontSize: '18px', fontWeight: '600' }}>
-                {departForecast?.recommended?.saves_mins_vs_now > 0
-                  ? `Leave at ${departForecast.recommended.depart_label} — save ${departForecast.recommended.saves_mins_vs_now} mins vs leaving now`
-                  : 'Now is the best time to leave'}
+                {forecastLoading
+                  ? 'Finding your best time to leave...'
+                  : departForecast?.recommended?.saves_mins_vs_now > 0
+                    ? `Leave at ${departForecast.recommended.depart_label} — save ${departForecast.recommended.saves_mins_vs_now} mins vs leaving now`
+                    : 'Now is the best time to leave'}
               </h3>
             </div>
             {departForecast && (
@@ -716,14 +733,19 @@ export default function RouteOptimizer({ userSession = null }) {
                 {departForecast.model_used === 'tomtom'
                   ? '🛰️ TOMTOM LIVE TRAFFIC'
                   : departForecast.model_used === 'gbdt'
-                    ? `🤖 AI GBDT FORECAST${departForecast.matched_corridor ? ` • ${departForecast.matched_corridor.toUpperCase()}` : ''}`
-                    : '📈 PEAK-HOUR HEURISTIC'}
+                    ? `🤖 AI FORECAST${departForecast.matched_corridor ? ` • ${departForecast.matched_corridor.toUpperCase()}` : ''}`
+                    : '📈 TRAFFIC PATTERN ESTIMATE'}
               </span>
             )}
           </div>
 
           {forecastLoading ? (
-            <div className="skeleton skeleton-block" style={{ height: '120px', marginTop: '12px' }} />
+            <>
+              <p style={{ fontSize: '12px', color: 'var(--color-body)', marginTop: '10px' }}>
+                ⏳ Checking live traffic for the next few hours, please wait a moment...
+              </p>
+              <div className="skeleton skeleton-block" style={{ height: '120px', marginTop: '8px' }} />
+            </>
           ) : (
             <>
               {departForecast.active_incident && (
@@ -784,7 +806,7 @@ export default function RouteOptimizer({ userSession = null }) {
           <div className="panel-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
             <div className="panel-header" style={{ marginBottom: '12px' }}>
               <div>
-                <span className="mono-eyebrow">INTERACTIVE GIS MAP</span>
+                <span className="mono-eyebrow">LIVE MAP</span>
                 <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Live Path & Congestion Geometry</h3>
               </div>
 
@@ -865,7 +887,7 @@ export default function RouteOptimizer({ userSession = null }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                     <div>
                       <span className="mono-eyebrow" style={{ color: 'var(--accent-orange)' }}>
-                        {activeRoute.route_id} ● {activeRoute.is_recommended ? 'RECOMMENDED ROUTE' : 'ALTERNATIVE ROUTE'}
+                        ROUTE {routeResult.routes.findIndex(r => r.route_id === activeRoute.route_id) + 1} ● {activeRoute.is_recommended ? 'RECOMMENDED ROUTE' : 'ALTERNATIVE ROUTE'}
                       </span>
                       <h3 style={{ fontSize: '18px', fontWeight: '600', marginTop: '2px' }}>{activeRoute.title}</h3>
                     </div>
@@ -957,11 +979,11 @@ export default function RouteOptimizer({ userSession = null }) {
 
       {/* 🚩 Citizen Report Modal */}
       {showReportModal && (
-        <div style={{
+        <div onClick={() => setShowReportModal(false)} style={{
           position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px',
         }}>
-          <div className="panel-card" style={{ maxWidth: '480px', width: '100%', border: '2px solid var(--status-severe)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
+          <div className="panel-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', width: '100%', border: '2px solid var(--status-severe)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', paddingBottom: '12px', borderBottom: '1px solid var(--color-hairline)' }}>
               <div>
                 <span className="mono-eyebrow" style={{ color: 'var(--status-severe)' }}>🚩 CITIZEN TRAFFIC REPORT</span>
@@ -1003,7 +1025,7 @@ export default function RouteOptimizer({ userSession = null }) {
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', fontSize: '13px', fontWeight: '600' }}
                   >
                     {['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'].map((z) => (
-                      <option key={z} value={z} style={{ color: '#0f172a', background: '#ffffff' }}>{z}</option>
+                      <option key={z} value={z} style={{ color: '#0f172a', background: '#ffffff' }}>{ZONE_LABELS[z]}</option>
                     ))}
                   </select>
                 </div>
@@ -1015,11 +1037,11 @@ export default function RouteOptimizer({ userSession = null }) {
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', fontSize: '13px', fontWeight: '600' }}
                   >
                     {[
-                      ['CONGESTION', 'CONGESTION'],
-                      ['ACCIDENT', 'ACCIDENT'],
-                      ['CONSTRUCTION', 'CONSTRUCTION'],
-                      ['SIGNAL_FAILURE', 'SIGNAL_FAILURE'],
-                      ['WEATHER', 'WEATHER'],
+                      ['CONGESTION', 'Traffic Jam'],
+                      ['ACCIDENT', 'Accident'],
+                      ['CONSTRUCTION', 'Road Construction'],
+                      ['SIGNAL_FAILURE', 'Signal Not Working'],
+                      ['WEATHER', 'Bad Weather'],
                       ['HARASSMENT', 'Harassment / Safety Concern'],
                       ['UNSAFE_AREA', 'Unsafe / Poorly Lit Area'],
                     ].map(([c, l]) => (

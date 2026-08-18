@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Siren, Phone, MapPin, X } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
 
@@ -21,6 +21,14 @@ export default function SOSButton({ userSession = null, variant = 'floating' }) 
     setOpen(false);
     setSent(false);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e) => { if (e.key === 'Escape') closeModal(); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sending]);
 
   const handleConfirmSend = () => {
     setSending(true);

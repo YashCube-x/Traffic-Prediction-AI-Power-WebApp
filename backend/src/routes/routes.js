@@ -28,6 +28,30 @@ async function fetchJson(url) {
   return await res.json();
 }
 
+// Nominatim's public instance enforces a strict ~1 req/sec usage policy and
+// throttles with 429 the moment a few users hit /routes/optimize or
+// /departure-forecast around the same time. Place names like "Central Silk
+// Board" (the default origin) get geocoded on nearly every request, so a
+// same-day cache turns most lookups into cache hits instead of new calls —
+// this is the actual fix, not just a longer timeout or a retry loop.
+const geocodeCache = new Map();
+const GEOCODE_TTL_MS = 24 * 60 * 60 * 1000;
+async function geocode(query) {
+  const key = query.trim().toLowerCase();
+  const hit = geocodeCache.get(key);
+  if (hit && Date.now() - hit.at < GEOCODE_TTL_MS) return hit.value;
+  const value = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`);
+  geocodeCache.set(key, { at: Date.now(), value });
+  return value;
+}
+
+// A 429 from Nominatim/OSRM (both free, shared public instances) is a
+// "busy right now" signal, not a real server fault — surface it as 503 with
+// a clear message instead of a generic 500 that just leaks "HTTP error 429".
+function isUpstreamBusy(err) {
+  return /HTTP error 429/.test(err.message);
+}
+
 const LOCATION_STOPWORDS = new Set([
   'road', 'junction', 'flyover', 'zone', 'corridor', 'north', 'south', 'east', 'west',
   'central', 'near', 'the', 'main', 'link', 'ring', 'outer', 'expressway', 'underpass',
@@ -64,8 +88,8 @@ router.post('/routes/optimize', async (req, res) => {
 
   try {
     // 1. Geocode Origin & Destination using OpenStreetMap Nominatim API
-    const originGeocode = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(originQuery)}`);
-    const destGeocode = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(destinationQuery)}`);
+    const originGeocode = await geocode(originQuery);
+    const destGeocode = await geocode(destinationQuery);
 
     if (!originGeocode || originGeocode.length === 0) {
       return res.status(400).json({ error: `Could not locate origin: "${originQuery}"` });
@@ -214,6 +238,9 @@ router.post('/routes/optimize', async (req, res) => {
 
   } catch (err) {
     console.error('Real routing error:', err);
+    if (isUpstreamBusy(err)) {
+      return res.status(503).json({ error: 'The mapping service is busy right now — please try again in a few seconds.' });
+    }
     res.status(500).json({ error: "Failed to fetch real-time route data", details: err.message });
   }
 });
@@ -243,8 +270,8 @@ router.post('/routes/departure-forecast', async (req, res) => {
   const useMinutes = !!offsetsMinutes;
 
   try {
-    const originGeocode = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(originQuery)}`);
-    const destGeocode = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(destinationQuery)}`);
+    const originGeocode = await geocode(originQuery);
+    const destGeocode = await geocode(destinationQuery);
     if (!originGeocode?.length) return res.status(400).json({ error: `Could not locate origin: "${originQuery}"` });
     if (!destGeocode?.length) return res.status(400).json({ error: `Could not locate destination: "${destinationQuery}"` });
 
@@ -384,6 +411,9 @@ router.post('/routes/departure-forecast', async (req, res) => {
     });
   } catch (err) {
     console.error('Departure forecast error:', err);
+    if (isUpstreamBusy(err)) {
+      return res.status(503).json({ error: 'The mapping service is busy right now — please try again in a few seconds.' });
+    }
     res.status(500).json({ error: 'Failed to compute departure forecast', details: err.message });
   }
 });

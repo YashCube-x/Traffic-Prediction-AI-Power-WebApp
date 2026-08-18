@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, Circle, Truck } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
 
@@ -37,6 +37,12 @@ export default function IncidentDetailDrawer({ alert, userSession, onClose, onUp
   const { showToast } = useToast();
   const [updating, setUpdating] = useState(false);
   const token = userSession?.access_token;
+
+  useEffect(() => {
+    const handleEscape = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   if (!alert) return null;
 

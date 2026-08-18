@@ -63,16 +63,45 @@ const NAV_ITEMS = [
   { tab: 'settings', labelKey: 'navigation.systemSettings', Icon: Settings, roles: ['ADMIN'] },
 ];
 
+// The session used to live only in React state, so any page refresh (or the
+// browser restoring a tab) reset it to null and bounced a still-validly-
+// logged-in user back to /login. sessionStorage survives a refresh (but not
+// a closed tab/browser, unlike localStorage), which matches how a JWT-backed
+// session should behave here.
+const SESSION_KEY = 'tv_session';
+function loadStoredSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function defaultTabFor(session) {
+  if (!session) return 'dashboard';
+  if (session.role === 'COMMUTER') return 'routes';
+  if (session.role === 'ADMIN') return 'command';
+  return 'dashboard';
+}
+
 export default function App() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { t } = useTranslation();
-  const [userSession, setUserSession] = useState(null);
+  const [userSession, setUserSession] = useState(loadStoredSession);
   const [trafficData, setTrafficData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [themeMode, setThemeMode] = useState('light');
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => defaultTabFor(loadStoredSession()));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // The header stack above the mobile drawer (GovHeader + notice ticker +
+  // chrome bar + top bar) has no fixed height — it grows with longer
+  // announcements, the language switcher, font-size changes, etc. A
+  // hardcoded CSS offset here previously caused the sticky top bar (higher
+  // z-index) to sit on top of and hide the first few drawer nav items, so
+  // the offset is measured from the real top bar instead.
+  const [mobileDrawerTop, setMobileDrawerTop] = useState(76);
+  const mobileTopbarRef = useRef(null);
   const [selectedSensorId, setSelectedSensorId] = useState(null);
   const [showAddSensorModal, setShowAddSensorModal] = useState(false);
   const [addSensorSubmitting, setAddSensorSubmitting] = useState(false);
@@ -91,8 +120,32 @@ export default function App() {
   const trafficDataRef = useRef(null);
 
   useEffect(() => {
+    if (userSession) sessionStorage.setItem(SESSION_KEY, JSON.stringify(userSession));
+    else sessionStorage.removeItem(SESSION_KEY);
+  }, [userSession]);
+
+  useEffect(() => {
     setMobileMenuOpen(false);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!showAddSensorModal) return;
+    const handleEscape = (e) => { if (e.key === 'Escape') setShowAddSensorModal(false); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showAddSensorModal]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const measure = () => {
+      if (mobileTopbarRef.current) {
+        setMobileDrawerTop(mobileTopbarRef.current.getBoundingClientRect().bottom);
+      }
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', themeMode);
@@ -290,6 +343,7 @@ export default function App() {
 
   const handleLogout = () => {
     setUserSession(null);
+    sessionStorage.removeItem(SESSION_KEY);
     navigate('/');
   };
 
@@ -415,7 +469,7 @@ export default function App() {
               <div className="brand-chrome-bar"></div>
 
               {/* Mobile / Tablet Top Bar - visible below the desktop sidebar breakpoint */}
-              <div className="mobile-topbar">
+              <div className="mobile-topbar" ref={mobileTopbarRef}>
                 <button
                   className="mobile-menu-toggle"
                   aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -432,8 +486,8 @@ export default function App() {
               {/* Mobile / Tablet Navigation Drawer */}
               {mobileMenuOpen && (
                 <>
-                  <div className="mobile-nav-backdrop" onClick={() => setMobileMenuOpen(false)} />
-                  <nav className="mobile-nav-drawer" aria-label="Mobile navigation">
+                  <div className="mobile-nav-backdrop" style={{ top: mobileDrawerTop }} onClick={() => setMobileMenuOpen(false)} />
+                  <nav className="mobile-nav-drawer" style={{ top: mobileDrawerTop }} aria-label="Mobile navigation">
                     <div className="sidebar-nav">
                       {visibleNavItems.map((item) => renderNavLink(item, true))}
                     </div>
@@ -499,17 +553,24 @@ export default function App() {
 
               {/* Add Sensor Node Modal */}
               {showAddSensorModal && (
-                <div style={{
-                  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                  background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  zIndex: 2000, padding: '20px',
-                }}>
-                  <div className="panel-card" style={{
-                    maxWidth: '560px', width: '100%', border: '2px solid var(--accent-mint)',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', padding: '24px', borderRadius: 'var(--radius-lg)',
-                    maxHeight: '90vh', overflowY: 'auto',
-                  }}>
+                <div
+                  onClick={() => setShowAddSensorModal(false)}
+                  style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 2000, padding: '20px',
+                  }}
+                >
+                  <div
+                    className="panel-card"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      maxWidth: '560px', width: '100%', border: '2px solid var(--accent-mint)',
+                      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', padding: '24px', borderRadius: 'var(--radius-lg)',
+                      maxHeight: '90vh', overflowY: 'auto',
+                    }}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--color-hairline)' }}>
                       <div>
                         <span className="mono-eyebrow">SENSOR NETWORK EXPANSION</span>

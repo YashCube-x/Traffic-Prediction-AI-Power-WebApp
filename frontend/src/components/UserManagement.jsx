@@ -77,6 +77,13 @@ export default function UserManagement({ userSession, onNavigate }) {
     fetchAudit();
   }, []);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const handleEscape = (e) => { if (e.key === 'Escape') setShowModal(false); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showModal]);
+
   const handleCreate = (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -386,11 +393,11 @@ export default function UserManagement({ userSession, onNavigate }) {
 
       {/* Create Account Modal */}
       {showModal && (
-        <div style={{
+        <div onClick={() => setShowModal(false)} style={{
           position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px',
         }}>
-          <div className="panel-card" style={{ maxWidth: '480px', width: '100%', border: '2px solid var(--accent-orange)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
+          <div className="panel-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', width: '100%', border: '2px solid var(--accent-orange)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--color-hairline)' }}>
               <div>
                 <span className="mono-eyebrow" style={{ color: 'var(--accent-orange)' }}>ADMIN-ISSUED CREDENTIALS</span>

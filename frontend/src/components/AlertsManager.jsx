@@ -96,6 +96,13 @@ export default function AlertsManager({ userSession }) {
     fetchAlerts();
   }, []);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const handleEscape = (e) => { if (e.key === 'Escape') setShowModal(false); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showModal]);
+
   // Citizen reports pending verification (operator sees only own zone)
   const fetchPendingReports = () => {
     if (!token) return;
@@ -293,9 +300,6 @@ export default function AlertsManager({ userSession }) {
               gap: '6px'
             }}
           >
-            + Log New Traffic Incident
-          </button>
-          <button className="button-mint" onClick={() => setShowModal(true)}>
             📡 Broadcast Emergency Alert
           </button>
         </div>
@@ -485,7 +489,7 @@ export default function AlertsManager({ userSession }) {
 
       {/* Broadcast Alert Modal Form */}
       {showModal && (
-        <div style={{
+        <div onClick={() => setShowModal(false)} style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -499,7 +503,7 @@ export default function AlertsManager({ userSession }) {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <div className="panel-card" style={{
+          <div className="panel-card" onClick={(e) => e.stopPropagation()} style={{
             maxWidth: '540px',
             width: '100%',
             border: '2px solid var(--accent-orange)',

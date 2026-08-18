@@ -95,6 +95,13 @@ export default function MyCommutePage({ userSession = null }) {
 
   useEffect(() => { fetchPlaces(); fetchSavedCommutes(); }, [token]);
 
+  useEffect(() => {
+    if (!showAddPlace) return;
+    const handleEscape = (e) => { if (e.key === 'Escape') setShowAddPlace(false); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showAddPlace]);
+
   // Prefill Home -> Office once places are loaded, so returning users never
   // have to retype an address (only if they haven't started planning yet).
   useEffect(() => {
@@ -805,8 +812,8 @@ export default function MyCommutePage({ userSession = null }) {
 
       {/* Add Place modal */}
       {showAddPlace && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
-          <div className="panel-card" style={{ maxWidth: '420px', width: '100%', border: '2px solid var(--accent-mint)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
+        <div onClick={() => setShowAddPlace(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
+          <div className="panel-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px', width: '100%', border: '2px solid var(--accent-mint)', padding: '24px', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Add a Saved Place</h3>
               <button onClick={() => setShowAddPlace(false)} style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer' }}><X size={14} /></button>

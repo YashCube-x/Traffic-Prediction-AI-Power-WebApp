@@ -86,6 +86,12 @@ export default function SensorManagement({ userSession }) {
 
   useEffect(() => { fetchSensors(); }, []);
   useEffect(() => {
+    if (!selected) return;
+    const handleEscape = (e) => { if (e.key === 'Escape') setSelected(null); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [selected]);
+  useEffect(() => {
     const id = setInterval(fetchSensors, 20000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
