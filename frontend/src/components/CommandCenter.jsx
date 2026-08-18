@@ -214,7 +214,7 @@ export default function CommandCenter({ userSession, onNavigate }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
-      <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="panel-card" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <span className="mono-eyebrow">CITY COMMAND CENTER</span>
           <h2 style={{ fontSize: '20px', fontWeight: '700', marginTop: '2px' }}>Bengaluru Mobility Operations</h2>

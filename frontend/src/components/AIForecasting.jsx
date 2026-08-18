@@ -87,7 +87,7 @@ export default function AIForecasting() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Corridor Selector Header */}
-      <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="panel-card" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <span className="mono-eyebrow">TRAFFIC FORECASTING & BOTTLENECK ANALYSIS</span>
           <h2 style={{ fontSize: '22px', fontWeight: '600', marginTop: '4px' }}>Predictive Congestion Insights</h2>

@@ -90,7 +90,7 @@ export default function MyReportsPage({ userSession = null }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* Header */}
-      <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="panel-card" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <span className="mono-eyebrow">CITIZEN REPORTING</span>
           <h2 style={{ fontSize: '22px', fontWeight: '700', marginTop: '4px' }}>My Reports</h2>

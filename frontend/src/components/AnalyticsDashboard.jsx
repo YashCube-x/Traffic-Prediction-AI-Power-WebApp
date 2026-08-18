@@ -77,7 +77,7 @@ export default function AnalyticsDashboard() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header Panel */}
-      <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="panel-card" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <span className="mono-eyebrow">MILESTONE 3 — TRAFFIC ANALYTICS & HEATMAP DASHBOARD</span>
           <h2 style={{ fontSize: '22px', fontWeight: '600', marginTop: '4px' }}>City Congestion Matrix & Performance Insights</h2>

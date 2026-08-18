@@ -79,7 +79,7 @@ export default function SystemSettings({ userSession }) {
         <h2 style={{ fontSize: '20px', fontWeight: '700', marginTop: '2px' }}>Platform Configuration</h2>
       </div>
 
-      <div className="panel-card" style={{ borderLeft: '4px solid var(--status-moderate)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+      <div className="panel-card" style={{ borderLeft: '4px solid var(--status-moderate)', display: 'flex', flexDirection: 'row', gap: '10px', alignItems: 'flex-start' }}>
         <AlertCircle size={16} style={{ color: 'var(--status-moderate)', flexShrink: 0, marginTop: '2px' }} />
         <p style={{ fontSize: '12px', color: 'var(--color-body)', lineHeight: 1.6 }}>
           These values are <strong>genuinely saved</strong> to the database and read back correctly. However, other parts of

@@ -394,7 +394,7 @@ export default function MyCommutePage({ userSession = null }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* Header */}
-      <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="panel-card" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <span className="mono-eyebrow">SMART DAILY COMMUTE</span>
           <h2 style={{ fontSize: '22px', fontWeight: '700', marginTop: '4px' }}>Plan your journey intelligently</h2>

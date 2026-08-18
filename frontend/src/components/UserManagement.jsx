@@ -148,7 +148,7 @@ export default function UserManagement({ userSession, onNavigate }) {
       <SystemHealthMonitor userSession={userSession} />
 
       {/* Header */}
-      <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="panel-card" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <span className="mono-eyebrow">RBAC — ACCOUNT & ZONE ADMINISTRATION</span>
           <h2 style={{ fontSize: '22px', fontWeight: '600', marginTop: '4px' }}>User Management</h2>
@@ -179,7 +179,7 @@ export default function UserManagement({ userSession, onNavigate }) {
       {createdCredentials && (
         <div
           className="panel-card"
-          style={{ borderLeft: '4px solid var(--status-low)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}
+          style={{ borderLeft: '4px solid var(--status-low)', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}
         >
           <div>
             <span className="mono-eyebrow" style={{ color: 'var(--status-low)' }}>ONE-TIME TEMPORARY CREDENTIALS — SHARE SECURELY, SHOWN ONLY ONCE</span>
