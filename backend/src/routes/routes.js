@@ -258,16 +258,23 @@ router.post('/routes/departure-forecast', async (req, res) => {
     let delaysByOffset = null;
     let effectiveBaseMins = baseMins;
 
-    // Best source: TomTom departAt — real historical+live traffic per hour
+    // Best source: TomTom departAt — real historical+live traffic per hour.
+    // Requests are SEQUENTIAL with a small gap: the free tier allows ~5
+    // queries/second, so a parallel burst of 6 gets 429-throttled.
     if (tomtom.isConfigured()) {
       try {
-        const results = await Promise.all(offsets.map((offset) => {
+        const results = [];
+        for (const offset of offsets) {
           const departAt = new Date(now.getTime() + Math.max(offset * 3600 * 1000, 90 * 1000));
-          return tomtom.calculateRoute(
+          const r = await tomtom.calculateRoute(
             parseFloat(orig.lat), parseFloat(orig.lon), parseFloat(dest.lat), parseFloat(dest.lon),
             { alternatives: 0, departAt }
           );
-        }));
+          results.push(r);
+          if (offset !== offsets[offsets.length - 1]) {
+            await new Promise(resolve => setTimeout(resolve, 250));
+          }
+        }
         if (results.every(r => r?.routes?.length)) {
           effectiveBaseMins = results[0].routes[0].no_traffic_time_mins;
           delaysByOffset = results.map(r => Math.max(0, r.routes[0].travel_time_mins - effectiveBaseMins));
