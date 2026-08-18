@@ -29,7 +29,9 @@
     "submit": "ಸಲ್ಲಿಸಿ",
     "edit": "ಸಂಪಾದಿಸಿ",
     "delete": "ಅಳಿಸಿ",
-    "confirm": "ಖಚಿತಪಡಿಸಿ"
+    "confirm": "ಖಚಿತಪಡಿಸಿ",
+    "portal": "ಪೋರ್ಟಲ್",
+    "urgentNotice": "ತುರ್ತು ಸೂಚನೆ"
   },
   "header": {
     "systemTitle": "TrafficVision AI",
@@ -38,7 +40,9 @@
     "commuterPortal": "ಪ್ರಯಾಣಿಕರ ಪೋರ್ಟಲ್"
   },
   "navigation": {
+    "commandCenter": "ಕಮಾಂಡ್ ಸೆಂಟರ್",
     "liveDashboard": "ಲೈವ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+    "myCommute": "ನನ್ನ ಪ್ರಯಾಣ",
     "trafficForecasting": "ಸಂಚಾರ ಮುನ್ಸೂಚನೆ",
     "routeOptimizer": "ಮಾರ್ಗ ಆಪ್ಟಿಮೈಜರ್",
     "incidentControl": "ಘಟನೆ ನಿಯಂತ್ರಣ",
@@ -75,7 +79,9 @@
     "feedStream": "ಫೀಡ್ ಸ್ಟ್ರೀಮ್",
     "sensorTelemetryNodes": "ಸಂವೇದಕ ಟೆಲಿಮೆಟ್ರಿ ನೋಡ್‌ಗಳು",
     "location": "ಸ್ಥಳ",
-    "vehiclesSpeed": "ವಾಹನಗಳು / ವೇಗ"
+    "vehiclesSpeed": "ವಾಹನಗಳು / ವೇಗ",
+    "commandEyebrow": "ನಗರ-ವ್ಯಾಪಿ ಕಾರ್ಯಾಚರಣೆ ಅವಲೋಕನ",
+    "commandTitle": "ನಗರ ಕಮಾಂಡ್ ಸೆಂಟರ್"
   },
   "routeOptimizer": {
     "title": "ಸ್ಮಾರ್ಟ್ ಮಾರ್ಗ ಆಪ್ಟಿಮೈಜರ್",
@@ -113,12 +119,23 @@
     "peakCongestionZone": "ಗರಿಷ್ಠ ದಟ್ಟಣೆ ವಲಯ",
     "liveZoneDensity": "ಲೈವ್ ವಲಯ ಸಾಂದ್ರತೆ ವಿಭಜನೆ",
     "historicalTrend": "ಐತಿಹಾಸಿಕ ದಟ್ಟಣೆ ಪ್ರವೃತ್ತಿ",
-    "corridorEfficiency": "ಕಾರಿಡಾರ್ ದಕ್ಷತೆ"
+    "corridorEfficiency": "ಕಾರಿಡಾರ್ ದಕ್ಷತೆ",
+    "eyebrow": "ಸಂಚಾರ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ಹೀಟ್‌ಮ್ಯಾಪ್‌ಗಳು"
   },
   "userManagement": {
     "title": "ಬಳಕೆದಾರ ನಿರ್ವಹಣೆ",
     "createOperatorAccount": "ಆಪರೇಟರ್ ಖಾತೆ ರಚಿಸಿ",
     "registeredUsers": "ನೋಂದಾಯಿತ ಬಳಕೆದಾರರು",
-    "assignedZone": "ನಿಯೋಜಿತ ವಲಯ"
+    "assignedZone": "ನಿಯೋಜಿತ ವಲಯ",
+    "eyebrow": "RBAC ಖಾತೆಗಳು ಮತ್ತು ವಲಯ ಆಡಳಿತ"
+  },
+  "predictions": {
+    "eyebrow": "ಸಂಚಾರ ಮುನ್ಸೂಚನೆ ಮತ್ತು ಅಡಚಣೆ ಮುನ್ಸೂಚನೆ"
+  },
+  "sensorManagement": {
+    "eyebrow": "ಸಂವೇದಕ ಜಾಲ ಮೇಲ್ವಿಚಾರಣೆ ಮತ್ತು ಆರೋಗ್ಯ"
+  },
+  "myCommutePage": {
+    "eyebrow": "ಸ್ಮಾರ್ಟ್ ದೈನಂದಿನ ಪ್ರಯಾಣ ಯೋಜಕ"
   }
 }

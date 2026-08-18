@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Contrast } from 'lucide-react';
+import LanguageSwitcher from './LanguageSwitcher';
 
 // A government-portal-style top strip: tricolour accent, trilingual
 // authority name, accessibility controls (font size, high contrast) and a
@@ -46,6 +47,8 @@ export default function GovHeader() {
           <span className="gov-datetime">
             {now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} · {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
           </span>
+
+          <LanguageSwitcher />
 
           <div className="gov-a11y-controls" role="group" aria-label="Accessibility controls">
             <button

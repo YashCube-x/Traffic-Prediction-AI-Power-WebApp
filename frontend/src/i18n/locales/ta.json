@@ -29,7 +29,9 @@
     "submit": "சமர்ப்பி",
     "edit": "திருத்து",
     "delete": "நீக்கு",
-    "confirm": "உறுதிசெய்"
+    "confirm": "உறுதிசெய்",
+    "portal": "போர்டல்",
+    "urgentNotice": "அவசர அறிவிப்பு"
   },
   "header": {
     "systemTitle": "TrafficVision AI",
@@ -38,7 +40,9 @@
     "commuterPortal": "பயணிகள் போர்டல்"
   },
   "navigation": {
+    "commandCenter": "கட்டளை மையம்",
     "liveDashboard": "நேரலை டாஷ்போர்டு",
+    "myCommute": "எனது பயணம்",
     "trafficForecasting": "போக்குவரத்து முன்னறிவிப்பு",
     "routeOptimizer": "பாதை உகந்தமயமாக்கி",
     "incidentControl": "சம்பவ கட்டுப்பாடு",
@@ -75,7 +79,9 @@
     "feedStream": "ஊட்ட ஓடை",
     "sensorTelemetryNodes": "சென்சார் டெலிமெட்ரி நோடுகள்",
     "location": "இடம்",
-    "vehiclesSpeed": "வாகனங்கள் / வேகம்"
+    "vehiclesSpeed": "வாகனங்கள் / வேகம்",
+    "commandEyebrow": "நகர அளவிலான செயல்பாட்டு கண்ணோட்டம்",
+    "commandTitle": "நகர கட்டளை மையம்"
   },
   "routeOptimizer": {
     "title": "ஸ்மார்ட் பாதை உகந்தமயமாக்கி",
@@ -113,12 +119,23 @@
     "peakCongestionZone": "உச்சக்கட்ட நெரிசல் மண்டலம்",
     "liveZoneDensity": "நேரலை மண்டல அடர்த்தி பகுப்பாய்வு",
     "historicalTrend": "வரலாற்று நெரிசல் போக்கு",
-    "corridorEfficiency": "காரிடார் திறன்"
+    "corridorEfficiency": "காரிடார் திறன்",
+    "eyebrow": "போக்குவரத்து பகுப்பாய்வு மற்றும் வெப்ப வரைபடங்கள்"
   },
   "userManagement": {
     "title": "பயனர் மேலாண்மை",
     "createOperatorAccount": "இயக்குனர் கணக்கை உருவாக்கு",
     "registeredUsers": "பதிவு செய்யப்பட்ட பயனர்கள்",
-    "assignedZone": "ஒதுக்கப்பட்ட மண்டலம்"
+    "assignedZone": "ஒதுக்கப்பட்ட மண்டலம்",
+    "eyebrow": "RBAC கணக்குகள் மற்றும் மண்டல நிர்வாகம்"
+  },
+  "predictions": {
+    "eyebrow": "போக்குவரத்து முன்னறிவிப்பு மற்றும் இடையூறு கணிப்பு"
+  },
+  "sensorManagement": {
+    "eyebrow": "சென்சார் நெட்வொர்க் கண்காணிப்பு மற்றும் நிலை"
+  },
+  "myCommutePage": {
+    "eyebrow": "ஸ்மார்ட் தினசரி பயண திட்டமிடுநர்"
   }
 }

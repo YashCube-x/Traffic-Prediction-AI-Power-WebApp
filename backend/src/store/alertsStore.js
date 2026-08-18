@@ -4,6 +4,11 @@
 // they now persist in the `alerts` table (created/seeded in ../db.js).
 const pool = require('../db');
 
+// Forward lifecycle a real incident actually goes through. Kept in one
+// place so both the validation below and the frontend progress UI agree
+// on the canonical order.
+const LIFECYCLE_STATUSES = ['REPORTED', 'VERIFIED', 'DISPATCHED', 'RESPONDING', 'RESOLVED'];
+
 function rowToAlert(row) {
   return {
     alert_id: row.alert_id,
@@ -15,6 +20,8 @@ function rowToAlert(row) {
     description: row.description,
     estimated_delay_mins: row.estimated_delay_mins,
     reported_by: row.reported_by || undefined,
+    status: row.status || 'REPORTED',
+    assigned_operator: row.assigned_operator || undefined,
     is_resolved: row.is_resolved,
     reported_at: row.reported_at instanceof Date ? row.reported_at.toISOString() : row.reported_at,
   };
@@ -45,8 +52,25 @@ async function addAlert(alert) {
 
 async function resolveAlert(alertId) {
   const { rows } = await pool.query(
-    'UPDATE alerts SET is_resolved = TRUE WHERE alert_id = $1 RETURNING *;',
+    "UPDATE alerts SET is_resolved = TRUE, status = 'RESOLVED' WHERE alert_id = $1 RETURNING *;",
     [alertId]
+  );
+  return rows.length ? rowToAlert(rows[0]) : null;
+}
+
+// Advances (or, for an admin correction, sets) the incident lifecycle
+// status. Keeps is_resolved in sync so existing resolved-filtering logic
+// (route rerouting, alert feeds) keeps working unchanged.
+async function updateStatus(alertId, status, operatorEmail) {
+  const isResolved = status === 'RESOLVED';
+  const { rows } = await pool.query(
+    `UPDATE alerts
+     SET status = $1,
+         is_resolved = $2,
+         assigned_operator = COALESCE(assigned_operator, $3)
+     WHERE alert_id = $4
+     RETURNING *;`,
+    [status, isResolved, operatorEmail || null, alertId]
   );
   return rows.length ? rowToAlert(rows[0]) : null;
 }
@@ -68,4 +92,4 @@ async function nextAlertId() {
   return `ALT-${year}-${String(next).padStart(3, '0')}`;
 }
 
-module.exports = { getAllAlerts, getActiveAlerts, addAlert, resolveAlert, findAlert, nextAlertId };
+module.exports = { getAllAlerts, getActiveAlerts, addAlert, resolveAlert, findAlert, nextAlertId, updateStatus, LIFECYCLE_STATUSES };

@@ -49,6 +49,8 @@ router.post('/alerts', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), async (
 
 // PATCH /alerts/:id/resolve — Restricted to ADMIN and OPERATOR roles.
 // An OPERATOR can only resolve incidents inside their own assigned zone.
+// Kept as a dedicated shortcut (existing UI calls it directly); internally
+// it's now equivalent to PATCH /alerts/:id/status { status: "RESOLVED" }.
 router.patch('/alerts/:id/resolve', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), async (req, res) => {
   try {
     const target = await alertsStore.findAlert(req.params.id);
@@ -58,13 +60,40 @@ router.patch('/alerts/:id/resolve', verifyToken, requireRoles(['ADMIN', 'OPERATO
     if (req.user.role === 'OPERATOR' && req.user.assigned_zone && target.zone_id !== req.user.assigned_zone) {
       return res.status(403).json({ error: `You can only resolve incidents in your assigned zone (${req.user.assigned_zone})` });
     }
-    const alert = await alertsStore.resolveAlert(req.params.id);
+    const alert = await alertsStore.updateStatus(req.params.id, 'RESOLVED', req.user.email);
     audit(req.user, 'ALERT_RESOLVE', alert.alert_id, { title: alert.title, zone: alert.zone_id }, req);
     broadcast('alerts_changed', { kind: 'resolved' });
     res.json(alert);
   } catch (err) {
     console.error('Alert resolve error:', err.message);
     res.status(503).json({ error: 'Could not update the incident', details: err.message });
+  }
+});
+
+// PATCH /alerts/:id/status { status } — move an incident through its
+// lifecycle (REPORTED -> VERIFIED -> DISPATCHED -> RESPONDING -> RESOLVED).
+// The first operator to touch an incident's status becomes its assigned
+// operator (COALESCE in the store — never overwrites an existing assignee).
+router.patch('/alerts/:id/status', verifyToken, requireRoles(['ADMIN', 'OPERATOR']), async (req, res) => {
+  const { status } = req.body;
+  if (!alertsStore.LIFECYCLE_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${alertsStore.LIFECYCLE_STATUSES.join(', ')}` });
+  }
+  try {
+    const target = await alertsStore.findAlert(req.params.id);
+    if (!target) {
+      return res.status(404).json({ error: "Alert ID not found" });
+    }
+    if (req.user.role === 'OPERATOR' && req.user.assigned_zone && target.zone_id !== req.user.assigned_zone) {
+      return res.status(403).json({ error: `You can only update incidents in your assigned zone (${req.user.assigned_zone})` });
+    }
+    const alert = await alertsStore.updateStatus(req.params.id, status, req.user.email);
+    audit(req.user, 'ALERT_STATUS_UPDATE', alert.alert_id, { status, title: alert.title }, req);
+    broadcast('alerts_changed', { kind: 'status_updated' });
+    res.json(alert);
+  } catch (err) {
+    console.error('Alert status update error:', err.message);
+    res.status(503).json({ error: 'Could not update the incident status', details: err.message });
   }
 });
 

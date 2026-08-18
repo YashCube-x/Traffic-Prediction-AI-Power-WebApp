@@ -29,7 +29,9 @@
     "submit": "Submit",
     "edit": "Edit",
     "delete": "Delete",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "portal": "PORTAL",
+    "urgentNotice": "URGENT NOTICE"
   },
   "header": {
     "systemTitle": "TrafficVision AI",
@@ -38,7 +40,9 @@
     "commuterPortal": "Commuter Portal"
   },
   "navigation": {
+    "commandCenter": "Command Center",
     "liveDashboard": "Live Dashboard",
+    "myCommute": "My Commute",
     "trafficForecasting": "Traffic Forecasting",
     "routeOptimizer": "Route Optimizer",
     "incidentControl": "Incident Control",
@@ -75,7 +79,9 @@
     "feedStream": "Feed Stream",
     "sensorTelemetryNodes": "Sensor Telemetry Nodes",
     "location": "Location",
-    "vehiclesSpeed": "Vehicles / Speed"
+    "vehiclesSpeed": "Vehicles / Speed",
+    "commandEyebrow": "City-Wide Operations Overview",
+    "commandTitle": "City Command Center"
   },
   "routeOptimizer": {
     "title": "Smart Route Optimizer",
@@ -113,12 +119,23 @@
     "peakCongestionZone": "Peak Congestion Zone",
     "liveZoneDensity": "Live Zone Density Breakdown",
     "historicalTrend": "Historical Congestion Trend",
-    "corridorEfficiency": "Corridor Efficiency"
+    "corridorEfficiency": "Corridor Efficiency",
+    "eyebrow": "Traffic Analytics & Heatmaps"
   },
   "userManagement": {
     "title": "User Management",
     "createOperatorAccount": "Create Operator Account",
     "registeredUsers": "Registered Users",
-    "assignedZone": "Assigned Zone"
+    "assignedZone": "Assigned Zone",
+    "eyebrow": "RBAC Accounts & Zone Administration"
+  },
+  "predictions": {
+    "eyebrow": "Traffic Forecasting & Bottleneck Prediction"
+  },
+  "sensorManagement": {
+    "eyebrow": "Sensor Network Monitoring & Health"
+  },
+  "myCommutePage": {
+    "eyebrow": "Smart Daily Commute Planner"
   }
 }

@@ -29,7 +29,9 @@
     "submit": "सबमिट करें",
     "edit": "संपादित करें",
     "delete": "हटाएं",
-    "confirm": "पुष्टि करें"
+    "confirm": "पुष्टि करें",
+    "portal": "पोर्टल",
+    "urgentNotice": "तत्काल सूचना"
   },
   "header": {
     "systemTitle": "TrafficVision AI",
@@ -38,7 +40,9 @@
     "commuterPortal": "यात्री पोर्टल"
   },
   "navigation": {
+    "commandCenter": "कमांड सेंटर",
     "liveDashboard": "लाइव डैशबोर्ड",
+    "myCommute": "मेरी यात्रा",
     "trafficForecasting": "ट्रैफ़िक पूर्वानुमान",
     "routeOptimizer": "रूट ऑप्टिमाइज़र",
     "incidentControl": "घटना नियंत्रण",
@@ -75,7 +79,9 @@
     "feedStream": "फ़ीड स्ट्रीम",
     "sensorTelemetryNodes": "सेंसर टेलीमेट्री नोड्स",
     "location": "स्थान",
-    "vehiclesSpeed": "वाहन / गति"
+    "vehiclesSpeed": "वाहन / गति",
+    "commandEyebrow": "शहर-व्यापी परिचालन अवलोकन",
+    "commandTitle": "सिटी कमांड सेंटर"
   },
   "routeOptimizer": {
     "title": "स्मार्ट रूट ऑप्टिमाइज़र",
@@ -113,12 +119,23 @@
     "peakCongestionZone": "पीक भीड़भाड़ क्षेत्र",
     "liveZoneDensity": "लाइव क्षेत्र घनत्व विश्लेषण",
     "historicalTrend": "ऐतिहासिक भीड़भाड़ प्रवृत्ति",
-    "corridorEfficiency": "कॉरिडोर दक्षता"
+    "corridorEfficiency": "कॉरिडोर दक्षता",
+    "eyebrow": "ट्रैफ़िक विश्लेषण और हीटमैप"
   },
   "userManagement": {
     "title": "उपयोगकर्ता प्रबंधन",
     "createOperatorAccount": "ऑपरेटर खाता बनाएं",
     "registeredUsers": "पंजीकृत उपयोगकर्ता",
-    "assignedZone": "निर्दिष्ट क्षेत्र"
+    "assignedZone": "निर्दिष्ट क्षेत्र",
+    "eyebrow": "आरबीएसी खाते और क्षेत्र प्रशासन"
+  },
+  "predictions": {
+    "eyebrow": "ट्रैफ़िक पूर्वानुमान और बाधा भविष्यवाणी"
+  },
+  "sensorManagement": {
+    "eyebrow": "सेंसर नेटवर्क निगरानी और स्वास्थ्य"
+  },
+  "myCommutePage": {
+    "eyebrow": "स्मार्ट दैनिक यात्रा योजनाकार"
   }
 }

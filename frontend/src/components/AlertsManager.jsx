@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext.jsx';
+import IncidentDetailDrawer from './IncidentDetailDrawer.jsx';
 
 export default function AlertsManager({ userSession }) {
   const { showToast } = useToast();
   const [alerts, setAlerts] = useState([]);
+  const [selectedAlert, setSelectedAlert] = useState(null);
   const [filterSeverity, setFilterSeverity] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -404,7 +406,7 @@ export default function AlertsManager({ userSession }) {
                     color: alert.is_resolved ? 'var(--status-low)' : 'var(--status-severe)'
                   }}
                 >
-                  {alert.is_resolved ? 'RESOLVED' : 'ACTIVE'}
+                  {alert.status || (alert.is_resolved ? 'RESOLVED' : 'ACTIVE')}
                 </span>
               </div>
 
@@ -424,6 +426,23 @@ export default function AlertsManager({ userSession }) {
                   </div>
                 </div>
 
+                <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setSelectedAlert(alert)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--color-surface-card)',
+                    border: '1px solid var(--color-hairline)',
+                    color: 'var(--color-on-dark)',
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  View Details
+                </button>
                 {!alert.is_resolved ? (
                   <button
                     onClick={() => handleResolve(alert.alert_id)}
@@ -444,11 +463,25 @@ export default function AlertsManager({ userSession }) {
                 ) : (
                   <span className="mono-label" style={{ color: 'var(--status-low)' }}>✓ Closed</span>
                 )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Incident Detail Drawer — lifecycle, assigned operator, simulated dispatch */}
+      {selectedAlert && (
+        <IncidentDetailDrawer
+          alert={selectedAlert}
+          userSession={userSession}
+          onClose={() => setSelectedAlert(null)}
+          onUpdated={(updated) => {
+            setSelectedAlert(updated);
+            setAlerts((prev) => prev.map((a) => (a.alert_id === updated.alert_id ? updated : a)));
+          }}
+        />
+      )}
 
       {/* Broadcast Alert Modal Form */}
       {showModal && (

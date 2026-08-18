@@ -108,6 +108,13 @@ async function initDatabase() {
         reported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    // Incident lifecycle (REPORTED -> VERIFIED -> DISPATCHED -> RESPONDING ->
+    // RESOLVED), added after the table already existed in earlier deploys.
+    await client.query(`ALTER TABLE alerts ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'REPORTED';`);
+    await client.query(`ALTER TABLE alerts ADD COLUMN IF NOT EXISTS assigned_operator VARCHAR(255);`);
+    // Backfill: any alert already marked resolved before this column existed
+    // should read as RESOLVED, not the new-row default of REPORTED.
+    await client.query(`UPDATE alerts SET status = 'RESOLVED' WHERE is_resolved = TRUE AND status = 'REPORTED';`);
 
     // Commuters' saved favourite routes ("My Commute")
     await client.query(`

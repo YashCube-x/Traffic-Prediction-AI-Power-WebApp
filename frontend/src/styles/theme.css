@@ -1120,6 +1120,112 @@ textarea:focus-visible,
   color: #fff;
 }
 
+/* Language switcher - sized/colored to match the a11y icon buttons above. */
+.gov-lang-switcher {
+  position: relative;
+}
+
+.gov-lang-trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gov-lang-trigger:hover {
+  border-color: var(--accent-orange);
+}
+
+.gov-lang-trigger-label {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gov-lang-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  z-index: 1200;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.gov-lang-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #64748b;
+  padding: 6px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 2px;
+}
+
+.gov-lang-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.gov-lang-option:hover {
+  background: #f1f5f9;
+}
+
+.gov-lang-option.active {
+  background: rgba(252, 76, 2, 0.08);
+  font-weight: 700;
+}
+
+.gov-lang-option-tick {
+  display: inline-flex;
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--accent-orange);
+}
+
+.gov-lang-trigger-code {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .gov-lang-trigger-label {
+    display: none;
+  }
+  .gov-lang-trigger-code {
+    display: inline;
+  }
+}
+
 /* High contrast mode toggle */
 body.gov-high-contrast {
   filter: contrast(1.3) saturate(1.15);

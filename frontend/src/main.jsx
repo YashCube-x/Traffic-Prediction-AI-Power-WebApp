@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import 'ux4g-web-components/styles.css';
 import 'ux4g-web-components/design-system';
+import './i18n';
 import App from './App.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
 

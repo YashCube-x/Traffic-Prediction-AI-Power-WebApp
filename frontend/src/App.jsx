@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import './styles/theme.css';
 import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard, Radio } from 'lucide-react';
 import { useToast } from './context/ToastContext.jsx';
+import { useTranslation } from 'react-i18next';
 
 const CONGESTION_COLORS = {
   LOW: '#34d399',
@@ -42,21 +43,22 @@ const inputStyle = {
 };
 
 const NAV_ITEMS = [
-  { tab: 'command', label: 'Command Center', Icon: LayoutDashboard, roles: ['ADMIN'] },
-  { tab: 'dashboard', label: 'Live Dashboard', Icon: Activity, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
-  { tab: 'predictions', label: 'Traffic Forecasting', Icon: TrendingUp, roles: ['ADMIN', 'OPERATOR'] },
-  { tab: 'routes', label: 'Route Optimizer', Icon: Navigation, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
-  { tab: 'my-commute', label: 'My Commute', Icon: Star, roles: ['COMMUTER'] },
-  { tab: 'alerts', label: 'Incident Control', Icon: AlertTriangle, roles: ['ADMIN', 'OPERATOR'] },
-  { tab: 'sensors', label: 'Sensor Management', Icon: Radio, roles: ['ADMIN'] },
-  { tab: 'safety', label: 'Safety Center', Icon: ShieldAlert, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
-  { tab: 'analytics', label: 'Analytics', Icon: BarChart2, roles: ['ADMIN'] },
-  { tab: 'users', label: 'User Management', Icon: Users, roles: ['ADMIN'] },
+  { tab: 'command', labelKey: 'navigation.commandCenter', Icon: LayoutDashboard, roles: ['ADMIN'] },
+  { tab: 'dashboard', labelKey: 'navigation.liveDashboard', Icon: Activity, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
+  { tab: 'predictions', labelKey: 'navigation.trafficForecasting', Icon: TrendingUp, roles: ['ADMIN', 'OPERATOR'] },
+  { tab: 'routes', labelKey: 'navigation.routeOptimizer', Icon: Navigation, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
+  { tab: 'my-commute', labelKey: 'navigation.myCommute', Icon: Star, roles: ['COMMUTER'] },
+  { tab: 'alerts', labelKey: 'navigation.incidentControl', Icon: AlertTriangle, roles: ['ADMIN', 'OPERATOR'] },
+  { tab: 'sensors', labelKey: 'navigation.sensorManagement', Icon: Radio, roles: ['ADMIN'] },
+  { tab: 'safety', labelKey: 'navigation.safetyCenter', Icon: ShieldAlert, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
+  { tab: 'analytics', labelKey: 'navigation.analytics', Icon: BarChart2, roles: ['ADMIN'] },
+  { tab: 'users', labelKey: 'navigation.userManagement', Icon: Users, roles: ['ADMIN'] },
 ];
 
 export default function App() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [userSession, setUserSession] = useState(null);
   const [trafficData, setTrafficData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -286,7 +288,7 @@ export default function App() {
   const userRole = userSession?.role || 'COMMUTER';
   const visibleNavItems = NAV_ITEMS.filter((item) => item.roles.includes(userRole));
 
-  const renderNavLink = ({ tab, label, Icon }, closeDrawerAfter) => (
+  const renderNavLink = ({ tab, labelKey, Icon }, closeDrawerAfter) => (
     <button
       key={tab}
       className={`nav-link ${activeTab === tab ? 'active' : ''}`}
@@ -296,7 +298,7 @@ export default function App() {
       }}
       style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left' }}
     >
-      <Icon size={16} /> {label}
+      <Icon size={16} /> {t(labelKey)}
     </button>
   );
 
@@ -304,7 +306,7 @@ export default function App() {
     <>
       <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle Light/Dark Theme" aria-label="Toggle light/dark theme" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '36px', width: '100%' }}>
         {themeMode === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-        {themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        {themeMode === 'dark' ? t('common.lightMode') : t('common.darkMode')}
       </button>
 
       <div className="user-role-pill" style={{ display: 'flex', alignItems: 'center', gap: '8px', height: 'auto', padding: '8px 10px' }}>
@@ -349,7 +351,7 @@ export default function App() {
           width: '100%',
         }}
       >
-        <LogOut size={14} /> Sign Out
+        <LogOut size={14} /> {t('common.signOut')}
       </button>
     </>
   );
@@ -442,7 +444,7 @@ export default function App() {
                       TRAFFICVISION <span style={{ color: 'var(--accent-orange)' }}>AI</span>
                     </span>
                     <span className="brand-badge" style={{ marginTop: '8px', background: 'rgba(52, 211, 153, 0.15)', color: 'var(--status-low)', borderColor: 'var(--status-low)' }}>
-                      {userRole} PORTAL
+                      {userRole} {t('common.portal')}
                     </span>
                     {userRole === 'OPERATOR' && userSession.assigned_zone && (
                       <span className="brand-badge" style={{ marginTop: '6px', background: 'rgba(251, 191, 36, 0.15)', color: 'var(--status-moderate)', borderColor: 'var(--status-moderate)' }}>
@@ -466,25 +468,25 @@ export default function App() {
                 <div className="hero-grid">
                   <div>
                     <span className="mono-eyebrow">
-                      {activeTab === 'command' && `City-Wide Operations Overview`}
-                      {activeTab === 'dashboard' && `Traffic & Congestion Dashboard`}
-                      {activeTab === 'predictions' && `Traffic Forecasting & Bottleneck Prediction`}
-                      {activeTab === 'routes' && `Smart Route Optimization & Travel Time`}
-                      {activeTab === 'my-commute' && `Smart Daily Commute Planner`}
-                      {activeTab === 'alerts' && `Incident Management & Dispatch`}
-                      {activeTab === 'sensors' && `Sensor Network Monitoring & Health`}
-                      {activeTab === 'safety' && `Emergency SOS & Community Safety`}
-                      {activeTab === 'analytics' && `Traffic Analytics & Heatmaps`}
-                      {activeTab === 'users' && `RBAC Accounts & Zone Administration`}
+                      {activeTab === 'command' && t('dashboard.commandEyebrow')}
+                      {activeTab === 'dashboard' && t('dashboard.eyebrow')}
+                      {activeTab === 'predictions' && t('predictions.eyebrow')}
+                      {activeTab === 'routes' && t('routeOptimizer.subtitle')}
+                      {activeTab === 'my-commute' && t('myCommutePage.eyebrow')}
+                      {activeTab === 'alerts' && t('incidentControl.title')}
+                      {activeTab === 'sensors' && t('sensorManagement.eyebrow')}
+                      {activeTab === 'safety' && t('safetyCenter.title')}
+                      {activeTab === 'analytics' && t('analytics.eyebrow')}
+                      {activeTab === 'users' && t('userManagement.eyebrow')}
                     </span>
                     <h1 className="display-title" style={{ marginTop: '4px' }}>
-                      {activeTab === 'command' ? 'City Command Center' : 'Urban Traffic Management System'}
+                      {activeTab === 'command' ? t('dashboard.commandTitle') : t('dashboard.systemTitle')}
                     </h1>
                   </div>
                   {userRole === 'ADMIN' && (
                     <div style={{ textAlign: 'right' }}>
                       <button className="button-mint" onClick={() => setShowAddSensorModal(true)}>
-                        + Add Sensor Node
+                        + {t('dashboard.addSensorNode')}
                       </button>
                     </div>
                   )}
@@ -623,7 +625,7 @@ export default function App() {
                         className="button-mint"
                         style={{ marginTop: '4px', padding: '12px', fontSize: '13px', fontWeight: '700' }}
                       >
-                        {addSensorSubmitting ? 'Adding Sensor Node...' : '+ Add Sensor Node'}
+                        {addSensorSubmitting ? `${t('common.loading')}...` : `+ ${t('dashboard.addSensorNode')}`}
                       </button>
                     </form>
                   </div>
@@ -649,7 +651,7 @@ export default function App() {
                         <div className="panel-card" style={{ borderLeft: `4px solid ${sevColor}` }}>
                           <div className="panel-header">
                             <div>
-                              <span className="mono-eyebrow">SELECTED NODE DETAIL</span>
+                              <span className="mono-eyebrow">{t('dashboard.selectedNodeDetail')}</span>
                               <h3 style={{ fontSize: '18px', fontWeight: '600' }}>{selectedSensor.location.road_name}</h3>
                             </div>
                             <span className={`status-badge ${selectedSensor.metrics.congestion_level}`}>
@@ -658,26 +660,26 @@ export default function App() {
                           </div>
                           <div className="stats-grid" style={{ marginTop: '16px' }}>
                             <div className="stat-card">
-                              <span className="mono-eyebrow">Sensor ID</span>
+                              <span className="mono-eyebrow">{t('dashboard.sensorId')}</span>
                               <div className="stat-value" style={{ fontSize: '18px' }}>{selectedSensor.sensor_id}</div>
                               <span className="mono-label">{selectedSensor.location.zone_id}</span>
                             </div>
                             <div className="stat-card">
-                              <span className="mono-eyebrow">Avg Speed</span>
+                              <span className="mono-eyebrow">{t('dashboard.averageSpeed')}</span>
                               <div className="stat-value">{selectedSensor.metrics.avg_speed_kmh} km/h</div>
-                              <span className="mono-label">Live corridor reading</span>
+                              <span className="mono-label">{t('dashboard.liveCorridorReading')}</span>
                             </div>
                             <div className="stat-card">
-                              <span className="mono-eyebrow">Vehicle Count</span>
+                              <span className="mono-eyebrow">{t('dashboard.vehicleCount')}</span>
                               <div className="stat-value">{selectedSensor.metrics.vehicle_count}</div>
-                              <span className="mono-label">Vehicles in view</span>
+                              <span className="mono-label">{t('dashboard.vehiclesInView')}</span>
                             </div>
                             <div className="stat-card">
-                              <span className="mono-eyebrow">Coordinates</span>
+                              <span className="mono-eyebrow">{t('dashboard.coordinates')}</span>
                               <div className="stat-value" style={{ fontSize: '15px' }}>
                                 {selectedSensor.location.latitude.toFixed(4)}, {selectedSensor.location.longitude.toFixed(4)}
                               </div>
-                              <span className="mono-label">Lat, Lon</span>
+                              <span className="mono-label">{t('dashboard.latLon')}</span>
                             </div>
                           </div>
                         </div>
@@ -689,11 +691,11 @@ export default function App() {
                       <div className="panel-card">
                         <div className="panel-header">
                           <div>
-                            <span className="mono-eyebrow">SENSOR TELEMETRY VIEWPORT</span>
-                            <h3 style={{ fontSize: '18px', fontWeight: '600' }}>City Sensor Node Map</h3>
+                            <span className="mono-eyebrow">{t('dashboard.sensorTelemetryViewport')}</span>
+                            <h3 style={{ fontSize: '18px', fontWeight: '600' }}>{t('dashboard.citySensorNodeMap')}</h3>
                           </div>
                           <span className="mono-label">
-                            {trafficData?.recent_telemetry?.length || 0} SENSORS PLOTTED
+                            {trafficData?.recent_telemetry?.length || 0} {t('dashboard.sensorsPlotted')}
                             {trafficData?.data_source === 'TOMTOM_LIVE' ? ' • 🛰️ LIVE (TOMTOM)' : ' • SIMULATED'}
                           </span>
                         </div>
@@ -709,15 +711,15 @@ export default function App() {
 
                       <div className="stats-column">
                         <div className="stat-card mint-tint">
-                          <span className="mono-eyebrow">Active Sensor Nodes</span>
+                          <span className="mono-eyebrow">{t('dashboard.activeSensorNodes')}</span>
                           <div className="stat-value" style={{ color: 'var(--accent-mint-text)' }}>
                             {loading ? <span className="skeleton skeleton-stat" /> : trafficData?.total_active_sensors}
                           </div>
-                          <span className="mono-label">Operational Network</span>
+                          <span className="mono-label">{t('dashboard.operationalNetwork')}</span>
                         </div>
 
                         <div className="stat-card">
-                          <span className="mono-eyebrow">City Average Speed</span>
+                          <span className="mono-eyebrow">{t('dashboard.cityAverageSpeed')}</span>
                           <div className="stat-value">
                             {loading ? <span className="skeleton skeleton-stat" /> : `${trafficData?.avg_city_speed_kmh} km/h`}
                           </div>
@@ -725,19 +727,19 @@ export default function App() {
                         </div>
 
                         <div className="stat-card">
-                          <span className="mono-eyebrow">Active Congestion Alerts</span>
+                          <span className="mono-eyebrow">{t('dashboard.activeCongestionAlerts')}</span>
                           <div className="stat-value" style={{ color: 'var(--accent-orange)' }}>
                             {loading ? <span className="skeleton skeleton-stat" /> : trafficData?.active_congestion_alerts}
                           </div>
-                          <span className="mono-label">Active Bottlenecks</span>
+                          <span className="mono-label">{t('dashboard.activeBottlenecks')}</span>
                         </div>
 
                         <div className="stat-card">
-                          <span className="mono-eyebrow">System Health</span>
+                          <span className="mono-eyebrow">{t('dashboard.systemHealth')}</span>
                           <div className="stat-value" style={{ color: '#34d399', fontSize: '24px' }}>
                             {loading ? <span className="skeleton skeleton-stat" /> : <>● {trafficData?.system_status}</>}
                           </div>
-                          <span className="mono-label">All Systems Online</span>
+                          <span className="mono-label">{t('dashboard.allSystemsOnline')}</span>
                         </div>
                       </div>
                     </div>
@@ -746,18 +748,18 @@ export default function App() {
                     <div className="panel-card">
                       <div className="panel-header">
                         <div>
-                          <span className="mono-eyebrow">FEED STREAM</span>
-                          <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Sensor Telemetry Nodes</h3>
+                          <span className="mono-eyebrow">{t('dashboard.feedStream')}</span>
+                          <h3 style={{ fontSize: '18px', fontWeight: '600' }}>{t('dashboard.sensorTelemetryNodes')}</h3>
                         </div>
                       </div>
                       <div className="table-responsive-wrapper" style={{ marginTop: '12px' }}>
                         <table className="data-table">
                           <thead>
                             <tr>
-                              <th>SENSOR ID</th>
-                              <th>LOCATION</th>
-                              <th>VEHICLES / SPEED</th>
-                              <th>STATUS</th>
+                              <th>{t('dashboard.sensorId')}</th>
+                              <th>{t('dashboard.location')}</th>
+                              <th>{t('dashboard.vehiclesSpeed')}</th>
+                              <th>{t('common.status')}</th>
                             </tr>
                           </thead>
                           <tbody>

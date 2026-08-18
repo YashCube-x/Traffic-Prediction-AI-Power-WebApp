@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Megaphone } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // Scrolling circulars/notices strip — the classic government-portal
 // "Latest Announcements" ticker.
 export default function NoticeTicker() {
+  const { t } = useTranslation();
   const [notices, setNotices] = useState([]);
 
   const fetchNotices = () => {
@@ -27,7 +29,7 @@ export default function NoticeTicker() {
   return (
     <div className="gov-notice-ticker" role="region" aria-label="Latest announcements">
       <span className="gov-notice-label">
-        <Megaphone size={13} /> {urgent ? 'URGENT NOTICE' : 'LATEST ANNOUNCEMENTS'}
+        <Megaphone size={13} /> {urgent ? t('common.urgentNotice') : t('common.latestAnnouncements')}
       </span>
       <div className="gov-notice-track">
         <div className="gov-notice-scroll">
