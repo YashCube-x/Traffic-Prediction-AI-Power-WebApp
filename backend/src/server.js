@@ -14,6 +14,7 @@ const commuteRoutes = require('./routes/commute');
 const noticesRoutes = require('./routes/notices');
 const statsRoutes = require('./routes/stats');
 const safetyRoutes = require('./routes/safety');
+const placesRoutes = require('./routes/places');
 const systemRoutes = require('./routes/system');
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/v1', commuteRoutes);
 app.use('/api/v1', noticesRoutes);
 app.use('/api/v1', statsRoutes);
 app.use('/api/v1', safetyRoutes);
+app.use('/api/v1', placesRoutes);
 app.use('/api/v1', systemRoutes);
 
 

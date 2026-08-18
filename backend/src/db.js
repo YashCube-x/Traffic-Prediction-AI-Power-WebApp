@@ -122,6 +122,21 @@ async function initDatabase() {
       );
     `);
 
+    // Named saved places ("Home", "Office", "College") — distinct from
+    // saved_routes (which stores an origin+destination PAIR). Places are
+    // single locations the Smart Commute Planner lets a user pick as either
+    // end of a route without retyping the address every time.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS saved_places (
+        id BIGSERIAL PRIMARY KEY,
+        user_id VARCHAR(50) NOT NULL,
+        label VARCHAR(60) NOT NULL,
+        address VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, label)
+      );
+    `);
+
     // Citizen-submitted traffic reports, pending operator verification.
     // An approved report becomes a real alert (and affects routing).
     await client.query(`

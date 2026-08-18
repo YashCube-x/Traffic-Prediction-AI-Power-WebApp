@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './styles/theme.css';
-import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert } from 'lucide-react';
+import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard } from 'lucide-react';
 import { useToast } from './context/ToastContext.jsx';
 
 const CONGESTION_COLORS = {
@@ -21,11 +21,13 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import UserManagement from './components/UserManagement';
 import SafetyCenter from './components/SafetyCenter';
 import SOSButton from './components/SOSButton';
+import MyCommutePage from './components/MyCommutePage';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import PublicRoutePage from './components/PublicRoutePage';
 import GovHeader from './components/GovHeader';
 import GovFooter from './components/GovFooter';
 import NoticeTicker from './components/NoticeTicker';
+import CommandCenter from './components/CommandCenter';
 
 const inputStyle = {
   width: '100%',
@@ -39,9 +41,11 @@ const inputStyle = {
 };
 
 const NAV_ITEMS = [
+  { tab: 'command', label: 'Command Center', Icon: LayoutDashboard, roles: ['ADMIN'] },
   { tab: 'dashboard', label: 'Live Dashboard', Icon: Activity, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
   { tab: 'predictions', label: 'Traffic Forecasting', Icon: TrendingUp, roles: ['ADMIN', 'OPERATOR'] },
   { tab: 'routes', label: 'Route Optimizer', Icon: Navigation, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
+  { tab: 'my-commute', label: 'My Commute', Icon: Star, roles: ['COMMUTER'] },
   { tab: 'alerts', label: 'Incident Control', Icon: AlertTriangle, roles: ['ADMIN', 'OPERATOR'] },
   { tab: 'safety', label: 'Safety Center', Icon: ShieldAlert, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
   { tab: 'analytics', label: 'Analytics', Icon: BarChart2, roles: ['ADMIN'] },
@@ -268,6 +272,7 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     setUserSession(user);
     if (user.role === 'COMMUTER') setActiveTab('routes');
+    else if (user.role === 'ADMIN') setActiveTab('command');
     else setActiveTab('dashboard');
   };
 
@@ -459,16 +464,18 @@ export default function App() {
                 <div className="hero-grid">
                   <div>
                     <span className="mono-eyebrow">
+                      {activeTab === 'command' && `City-Wide Operations Overview`}
                       {activeTab === 'dashboard' && `Traffic & Congestion Dashboard`}
                       {activeTab === 'predictions' && `Traffic Forecasting & Bottleneck Prediction`}
                       {activeTab === 'routes' && `Smart Route Optimization & Travel Time`}
+                      {activeTab === 'my-commute' && `Smart Daily Commute Planner`}
                       {activeTab === 'alerts' && `Incident Management & Dispatch`}
                       {activeTab === 'safety' && `Emergency SOS & Community Safety`}
                       {activeTab === 'analytics' && `Traffic Analytics & Heatmaps`}
                       {activeTab === 'users' && `RBAC Accounts & Zone Administration`}
                     </span>
                     <h1 className="display-title" style={{ marginTop: '4px' }}>
-                      Urban Traffic Management System
+                      {activeTab === 'command' ? 'City Command Center' : 'Urban Traffic Management System'}
                     </h1>
                   </div>
                   {userRole === 'ADMIN' && (
@@ -622,6 +629,9 @@ export default function App() {
 
               {/* Main Content */}
               <main className="main-content animate-fade-in" key={activeTab}>
+                {activeTab === 'command' && (
+                  <CommandCenter userSession={userSession} onNavigate={setActiveTab} />
+                )}
                 {activeTab === 'dashboard' && (
                   <>
                     {/* Selected Sensor Detail Panel */}
@@ -786,6 +796,7 @@ export default function App() {
 
                 {activeTab === 'predictions' && <AIForecasting />}
                 {activeTab === 'routes' && <RouteOptimizer userSession={userSession} />}
+                {activeTab === 'my-commute' && <MyCommutePage userSession={userSession} />}
                 {activeTab === 'alerts' && <AlertsManager userSession={userSession} />}
                 {activeTab === 'safety' && <SafetyCenter userSession={userSession} />}
                 {activeTab === 'analytics' && <AnalyticsDashboard />}

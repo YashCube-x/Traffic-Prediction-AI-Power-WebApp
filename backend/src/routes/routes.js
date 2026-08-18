@@ -218,14 +218,29 @@ router.post('/routes/optimize', async (req, res) => {
   }
 });
 
-// POST /routes/departure-forecast  { origin, destination }
+// POST /routes/departure-forecast  { origin, destination, offsets_minutes? }
 // "Best time to leave": ETA for departing now and each of the next 5 hours.
 // If the route passes through a corridor the GBDT model knows, the forecast
 // uses real model predictions from the FastAPI AI engine; otherwise (or if
 // the engine is down) it falls back to the peak-hour heuristic.
+//
+// offsets_minutes (optional): the Smart Commute Planner's "What if I leave
+// at +10/+20/+30 min / a custom time" feature needs finer-than-hourly
+// granularity. Passing e.g. [0, 10, 20, 30] switches every offset below from
+// whole hours to minutes-from-now, reusing the exact same TomTom/GBDT/
+// heuristic sourcing and incident-matching — no separate endpoint or model.
 router.post('/routes/departure-forecast', async (req, res) => {
   const originQuery = (req.body?.origin || "Central Silk Board").trim();
   const destinationQuery = (req.body?.destination || "Manyata Tech Park").trim();
+
+  const rawOffsetsMinutes = Array.isArray(req.body?.offsets_minutes) ? req.body.offsets_minutes : null;
+  const offsetsMinutes = rawOffsetsMinutes
+    ? [...new Set(rawOffsetsMinutes.map(Number).filter(n => Number.isFinite(n) && n >= 0 && n <= 300))].sort((a, b) => a - b).slice(0, 6)
+    : null;
+  if (rawOffsetsMinutes && offsetsMinutes.length === 0) {
+    return res.status(400).json({ error: 'offsets_minutes must contain integers between 0 and 300' });
+  }
+  const useMinutes = !!offsetsMinutes;
 
   try {
     const originGeocode = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(originQuery)}`);
@@ -253,19 +268,21 @@ router.post('/routes/departure-forecast', async (req, res) => {
     const corridor = CORRIDOR_KEYWORDS.find(c => c.keywords.some(kw => haystack.includes(kw)));
 
     const now = new Date();
-    const offsets = [0, 1, 2, 3, 4, 5];
+    const offsets = offsetsMinutes || [0, 1, 2, 3, 4, 5];
+    const offsetMs = (offset) => offset * (useMinutes ? 60 * 1000 : 3600 * 1000);
+    const offsetHourOfDay = (offset) => new Date(now.getTime() + offsetMs(offset)).getHours();
     let modelUsed = 'peak-heuristic';
     let delaysByOffset = null;
     let effectiveBaseMins = baseMins;
 
-    // Best source: TomTom departAt — real historical+live traffic per hour.
-    // Requests are SEQUENTIAL with a small gap: the free tier allows ~5
-    // queries/second, so a parallel burst of 6 gets 429-throttled.
+    // Best source: TomTom departAt — real historical+live traffic for the
+    // requested departure instant. Requests are SEQUENTIAL with a small gap:
+    // the free tier allows ~5 queries/second, so a parallel burst gets 429-throttled.
     if (tomtom.isConfigured()) {
       try {
         const results = [];
         for (const offset of offsets) {
-          const departAt = new Date(now.getTime() + Math.max(offset * 3600 * 1000, 90 * 1000));
+          const departAt = new Date(now.getTime() + Math.max(offsetMs(offset), 90 * 1000));
           const r = await tomtom.calculateRoute(
             parseFloat(orig.lat), parseFloat(orig.lon), parseFloat(dest.lat), parseFloat(dest.lon),
             { alternatives: 0, departAt }
@@ -285,11 +302,11 @@ router.post('/routes/departure-forecast', async (req, res) => {
       }
     }
 
-    // Next: GBDT model predictions for each departure hour
+    // Next: GBDT model predictions for the hour bucket each departure falls in
     if (!delaysByOffset && corridor) {
       try {
         const predictions = await Promise.all(offsets.map(async (offset) => {
-          const hour = (now.getHours() + offset) % 24;
+          const hour = offsetHourOfDay(offset);
           const upstream = await fetch(`${AI_ENGINE_URL}/api/v1/traffic/predict`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -314,7 +331,7 @@ router.post('/routes/departure-forecast', async (req, res) => {
 
     if (!delaysByOffset) {
       delaysByOffset = offsets.map(offset => {
-        const hour = (now.getHours() + offset) % 24;
+        const hour = offsetHourOfDay(offset);
         const isPeak = (hour >= 8 && hour <= 11) || (hour >= 17 && hour <= 20);
         return Math.round(baseMins * (isPeak ? 0.35 : 0.08));
       });
@@ -326,14 +343,19 @@ router.post('/routes/departure-forecast', async (req, res) => {
     const matchedAlert = activeAlerts.find(a => routeMatchesAlert(pseudoRoute, orig.display_name, dest.display_name, a));
 
     const forecast = offsets.map((offset, i) => {
-      const departAt = new Date(now.getTime() + offset * 3600 * 1000);
-      const incidentDelay = matchedAlert && offset <= 1 ? matchedAlert.estimated_delay_mins : 0;
+      const departAt = new Date(now.getTime() + offsetMs(offset));
+      // Incidents are logged against the current moment — only weight them
+      // for near-term departures (next hour either way units are counted in).
+      const withinNearTerm = useMinutes ? offset <= 60 : offset <= 1;
+      const incidentDelay = matchedAlert && withinNearTerm ? matchedAlert.estimated_delay_mins : 0;
       const delayMins = delaysByOffset[i] + incidentDelay;
       const etaMins = effectiveBaseMins + delayMins;
       const ratio = delayMins / effectiveBaseMins;
       const congestion = ratio > 0.45 ? 'SEVERE' : ratio > 0.25 ? 'HEAVY' : ratio > 0.1 ? 'MODERATE' : 'LOW';
       return {
-        offset_hours: offset,
+        offset_hours: useMinutes ? undefined : offset,
+        offset_minutes: useMinutes ? offset : offset * 60,
+        depart_at: departAt.toISOString(),
         depart_label: offset === 0 ? 'Now' : departAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }),
         eta_mins: etaMins,
         delay_mins: delayMins,
@@ -355,6 +377,7 @@ router.post('/routes/departure-forecast', async (req, res) => {
       forecast,
       recommended: {
         depart_label: recommended.depart_label,
+        depart_at: recommended.depart_at,
         eta_mins: recommended.eta_mins,
         saves_mins_vs_now: forecast[0].eta_mins - recommended.eta_mins,
       },
