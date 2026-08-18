@@ -1,14 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Activity, TrendingUp, Navigation, AlertTriangle, ArrowRight, ShieldCheck, 
-  Radio, Cpu, Building2, Star, CheckCircle2, Zap, Terminal, Clock, BrainCircuit, Sparkles 
+import {
+  Activity, TrendingUp, Navigation, AlertTriangle, ArrowRight, ShieldCheck,
+  Radio, Cpu, Building2, Star, CheckCircle2, Zap, Terminal, Clock, BrainCircuit, Sparkles
 } from 'lucide-react';
+import NoticeTicker from './NoticeTicker';
+import GovFooter from './GovFooter';
 
 export default function LandingPage() {
   return (
     <div className="w-full min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-orange-500 selection:text-white scroll-smooth relative">
-      
+
+      <NoticeTicker />
+
       {/* ☀️ Top Fixed / Sticky Navbar Header */}
       <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-xl border-b border-slate-200/90 shadow-sm">
         {/* Brand Chrome Gradient Line */}
@@ -445,12 +449,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="w-full py-6 text-center text-xs text-slate-500 bg-white border-t border-slate-200 font-sans relative z-10">
-        <div className="max-w-[1400px] mx-auto px-6 md:px-10">
-          TrafficVision AI © 2026 — Smart Urban Mobility System
-        </div>
-      </footer>
+      <GovFooter />
     </div>
   );
 }

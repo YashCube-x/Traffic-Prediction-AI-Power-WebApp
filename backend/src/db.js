@@ -136,6 +136,28 @@ async function initDatabase() {
       );
     `);
 
+    // Public notices / circulars published by the authority (admin-managed)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS notices (
+        id BIGSERIAL PRIMARY KEY,
+        title VARCHAR(250) NOT NULL,
+        body TEXT NOT NULL,
+        notice_type VARCHAR(20) NOT NULL DEFAULT 'INFO',
+        published_by VARCHAR(255),
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Simple key/value counters (classic govt-portal visitor counter)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS site_stats (
+        stat_key VARCHAR(50) PRIMARY KEY,
+        stat_value BIGINT NOT NULL DEFAULT 0
+      );
+    `);
+    await client.query(`INSERT INTO site_stats (stat_key, stat_value) VALUES ('visitors', 0) ON CONFLICT DO NOTHING;`);
+
     // Audit trail of privileged actions (who did what, when, from where)
     await client.query(`
       CREATE TABLE IF NOT EXISTS audit_log (

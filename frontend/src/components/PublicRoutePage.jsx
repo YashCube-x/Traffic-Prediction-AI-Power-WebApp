@@ -2,6 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import RouteOptimizer from './RouteOptimizer';
+import NoticeTicker from './NoticeTicker';
+import GovFooter from './GovFooter';
 
 // Public, no-login traffic check. Anyone in the city can plan a route and
 // see live congestion + incident banners; signing in additionally unlocks
@@ -10,6 +12,7 @@ export default function PublicRoutePage({ userSession = null }) {
   return (
     <div className="app-container" style={{ minHeight: '100vh' }}>
       <div className="brand-chrome-bar"></div>
+      <NoticeTicker />
 
       {/* Slim public top bar */}
       <nav style={{
@@ -42,6 +45,7 @@ export default function PublicRoutePage({ userSession = null }) {
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
         <RouteOptimizer userSession={userSession} />
       </main>
+      <GovFooter />
     </div>
   );
 }

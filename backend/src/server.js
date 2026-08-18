@@ -11,6 +11,8 @@ const usersRoutes = require('./routes/users');
 const { router: eventsRouter } = require('./events');
 const reportsRoutes = require('./routes/reports');
 const commuteRoutes = require('./routes/commute');
+const noticesRoutes = require('./routes/notices');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
 const PORT = process.env.PORT || 2001;
@@ -30,6 +32,8 @@ app.use('/api/v1', usersRoutes);
 app.use('/api/v1', eventsRouter);
 app.use('/api/v1', reportsRoutes);
 app.use('/api/v1', commuteRoutes);
+app.use('/api/v1', noticesRoutes);
+app.use('/api/v1', statsRoutes);
 
 
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, ShieldCheck, Copy, ScrollText, RefreshCw } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import GovAdminExtras from './GovAdminExtras.jsx';
 
 const ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
 
@@ -307,6 +308,9 @@ export default function UserManagement({ userSession }) {
           </div>
         )}
       </div>
+
+      {/* Government-portal additions: system stats, CSV exports, circulars */}
+      <GovAdminExtras userSession={userSession} />
 
       {/* Audit Log Panel */}
       <div className="panel-card">

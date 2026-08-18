@@ -21,6 +21,9 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import UserManagement from './components/UserManagement';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import PublicRoutePage from './components/PublicRoutePage';
+import GovHeader from './components/GovHeader';
+import GovFooter from './components/GovFooter';
+import NoticeTicker from './components/NoticeTicker';
 
 const inputStyle = {
   width: '100%',
@@ -385,6 +388,9 @@ export default function App() {
               />
             ) : (
             <div className="app-container">
+              {/* Government-style trilingual header + accessibility controls */}
+              <GovHeader />
+              <NoticeTicker />
               {/* Brand Chrome Line Header */}
               <div className="brand-chrome-bar"></div>
 
@@ -782,6 +788,7 @@ export default function App() {
               </main>
                 </div>
               </div>
+              <GovFooter />
             </div>
             )
           ) : (
