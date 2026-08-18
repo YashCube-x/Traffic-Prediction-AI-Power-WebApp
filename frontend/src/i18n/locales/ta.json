@@ -43,6 +43,7 @@
     "commandCenter": "கட்டளை மையம்",
     "liveDashboard": "நேரலை டாஷ்போர்டு",
     "myCommute": "எனது பயணம்",
+    "myReports": "எனது புகார்கள்",
     "trafficForecasting": "போக்குவரத்து முன்னறிவிப்பு",
     "routeOptimizer": "பாதை உகந்தமயமாக்கி",
     "incidentControl": "சம்பவ கட்டுப்பாடு",
@@ -52,6 +53,7 @@
     "sensorManagement": "சென்சார் மேலாண்மை",
     "aiModelControl": "AI மாதிரி கட்டுப்பாடு",
     "auditLogs": "தணிக்கை பதிவுகள்",
+    "announcements": "அறிவிப்புகள்",
     "systemSettings": "கணினி அமைப்புகள்"
   },
   "dashboard": {
@@ -137,5 +139,8 @@
   },
   "myCommutePage": {
     "eyebrow": "ஸ்மார்ட் தினசரி பயண திட்டமிடுநர்"
+  },
+  "myReportsPage": {
+    "eyebrow": "குடிமக்கள் புகார் அளிப்பு"
   }
 }

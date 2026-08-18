@@ -43,6 +43,7 @@
     "commandCenter": "കമാൻഡ് സെന്റർ",
     "liveDashboard": "ലൈവ് ഡാഷ്ബോർഡ്",
     "myCommute": "എന്റെ യാത്ര",
+    "myReports": "എന്റെ റിപ്പോർട്ടുകൾ",
     "trafficForecasting": "ട്രാഫിക് പ്രവചനം",
     "routeOptimizer": "റൂട്ട് ഒപ്റ്റിമൈസർ",
     "incidentControl": "സംഭവ നിയന്ത്രണം",
@@ -52,6 +53,7 @@
     "sensorManagement": "സെൻസർ മാനേജ്മെന്റ്",
     "aiModelControl": "AI മോഡൽ നിയന്ത്രണം",
     "auditLogs": "ഓഡിറ്റ് ലോഗുകൾ",
+    "announcements": "അറിയിപ്പുകൾ",
     "systemSettings": "സിസ്റ്റം ക്രമീകരണങ്ങൾ"
   },
   "dashboard": {
@@ -137,5 +139,8 @@
   },
   "myCommutePage": {
     "eyebrow": "സ്മാർട്ട് ദൈനംദിന യാത്രാ പ്ലാനർ"
+  },
+  "myReportsPage": {
+    "eyebrow": "പൗര റിപ്പോർട്ടിംഗ്"
   }
 }

@@ -43,6 +43,7 @@
     "commandCenter": "Command Center",
     "liveDashboard": "Live Dashboard",
     "myCommute": "My Commute",
+    "myReports": "My Reports",
     "trafficForecasting": "Traffic Forecasting",
     "routeOptimizer": "Route Optimizer",
     "incidentControl": "Incident Control",
@@ -52,6 +53,7 @@
     "sensorManagement": "Sensor Management",
     "aiModelControl": "AI Model Control",
     "auditLogs": "Audit Logs",
+    "announcements": "Announcements",
     "systemSettings": "System Settings"
   },
   "dashboard": {
@@ -137,5 +139,8 @@
   },
   "myCommutePage": {
     "eyebrow": "Smart Daily Commute Planner"
+  },
+  "myReportsPage": {
+    "eyebrow": "Citizen Reporting"
   }
 }

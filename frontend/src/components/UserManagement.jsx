@@ -313,7 +313,8 @@ export default function UserManagement({ userSession, onNavigate }) {
         )}
       </div>
 
-      {/* Government-portal additions: system stats, CSV exports, circulars */}
+      {/* Government-portal additions: system stats, CSV exports. Notice/circular
+          publishing has its own dedicated page — see the Announcements tab. */}
       <GovAdminExtras userSession={userSession} />
 
       {/* Audit Log Panel — quick glance only; the dedicated Audit Logs page

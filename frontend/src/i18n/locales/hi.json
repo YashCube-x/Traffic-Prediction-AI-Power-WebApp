@@ -43,6 +43,7 @@
     "commandCenter": "कमांड सेंटर",
     "liveDashboard": "लाइव डैशबोर्ड",
     "myCommute": "मेरी यात्रा",
+    "myReports": "मेरी रिपोर्ट",
     "trafficForecasting": "ट्रैफ़िक पूर्वानुमान",
     "routeOptimizer": "रूट ऑप्टिमाइज़र",
     "incidentControl": "घटना नियंत्रण",
@@ -52,6 +53,7 @@
     "sensorManagement": "सेंसर प्रबंधन",
     "aiModelControl": "एआई मॉडल नियंत्रण",
     "auditLogs": "ऑडिट लॉग",
+    "announcements": "घोषणाएं",
     "systemSettings": "सिस्टम सेटिंग्स"
   },
   "dashboard": {
@@ -137,5 +139,8 @@
   },
   "myCommutePage": {
     "eyebrow": "स्मार्ट दैनिक यात्रा योजनाकार"
+  },
+  "myReportsPage": {
+    "eyebrow": "नागरिक रिपोर्टिंग"
   }
 }
