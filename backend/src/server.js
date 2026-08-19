@@ -27,8 +27,14 @@ const PORT = process.env.PORT || 2001;
 // outside production so local dev on any port keeps working unchanged —
 // FRONTEND_URL is already used for password-reset email links locally and
 // isn't necessarily the same origin you're testing the frontend from.
+// CORS matches Origin header values character-for-character, and a browser
+// never sends a trailing slash on Origin — a FRONTEND_URL of
+// "https://x.netlify.app/" would silently mismatch "https://x.netlify.app"
+// and break every request from the real site. Stripped here so a stray
+// trailing slash in the env var can't cause that.
 const isProd = process.env.NODE_ENV === 'production';
-app.use(cors(isProd && process.env.FRONTEND_URL ? { origin: process.env.FRONTEND_URL } : {}));
+const frontendOrigin = (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
+app.use(cors(isProd && frontendOrigin ? { origin: frontendOrigin } : {}));
 // Raised from the 100kb default so registration's base64-encoded Aadhaar
 // photo (sent as a JSON string, no multipart/multer setup in this API) fits.
 app.use(express.json({ limit: '6mb' }));
