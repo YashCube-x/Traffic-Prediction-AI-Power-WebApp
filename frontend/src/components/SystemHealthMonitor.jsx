@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Server, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Cpu, Mail, Satellite, Database } from 'lucide-react';
+import { API_BASE } from '../config.js';
 
 const SERVICE_META = {
   database: { Icon: Database, color: '#3b82f6' },
@@ -25,7 +26,7 @@ export default function SystemHealthMonitor({ userSession }) {
 
   const fetchHealth = useCallback(() => {
     setLoading(true);
-    fetch('http://localhost:2001/api/v1/system/health', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/system/health`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Could not fetch system health');
@@ -88,7 +89,7 @@ export default function SystemHealthMonitor({ userSession }) {
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginTop: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '12px', marginTop: '14px' }}>
             {Object.entries(health.services).map(([key, svc]) => {
               const meta = SERVICE_META[key] || { Icon: Server, color: '#94a3b8' };
               const StatusIcon = svc.ok ? CheckCircle2 : (key === 'database' ? XCircle : AlertTriangle);

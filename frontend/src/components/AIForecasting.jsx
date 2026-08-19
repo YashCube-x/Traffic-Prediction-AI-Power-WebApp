@@ -1,3 +1,4 @@
+import { API_BASE } from '../config.js';
 
 import React, { useState, useEffect } from 'react';
 
@@ -7,7 +8,7 @@ export default function AIForecasting() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:2001/api/v1/traffic/predictions')
+    fetch(`${API_BASE}/api/v1/traffic/predictions`)
       .then((res) => res.json())
       .then((data) => {
         setPredictions(data);
@@ -168,7 +169,7 @@ export default function AIForecasting() {
             </div>
 
             {/* Custom Bar Timeline */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '16px', marginTop: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(130px, 100%), 1fr))', gap: '16px', marginTop: '16px' }}>
               {activeCorridor.forecast_timeline.map((point) => {
                 const speedHeight = Math.min(100, Math.max(15, (point.predicted_speed_kmh / 50) * 100));
                 let barColor = 'var(--status-low)';

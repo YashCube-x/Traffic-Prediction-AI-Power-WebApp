@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 // Turns backend codes like "ZONE_CENTRAL" / "SIGNAL_FAILURE" into plain
 // words ("Central Zone" / "Signal Failure") for display to commuters.
@@ -82,7 +83,7 @@ export default function RouteOptimizer({ userSession = null }) {
   const mapInstanceRef = useRef(null);
 
   const fetchActiveAlerts = () => {
-    fetch('http://localhost:2001/api/v1/alerts')
+    fetch(`${API_BASE}/api/v1/alerts`)
       .then((res) => res.json())
       .then((data) => {
         const active = (data || []).filter(a => !a.is_resolved);
@@ -115,7 +116,7 @@ export default function RouteOptimizer({ userSession = null }) {
   // Live updates: when an operator logs/resolves an incident anywhere, the
   // warning banner refreshes instantly without a page reload.
   useEffect(() => {
-    const source = new EventSource('http://localhost:2001/api/v1/events');
+    const source = new EventSource(`${API_BASE}/api/v1/events`);
     source.addEventListener('alerts_changed', () => fetchActiveAlerts());
     return () => source.close();
   }, []);
@@ -123,7 +124,7 @@ export default function RouteOptimizer({ userSession = null }) {
   const fetchRouteOptimization = (orig, dest) => {
     setLoading(true);
     setRouteError('');
-    fetch('http://localhost:2001/api/v1/routes/optimize', {
+    fetch(`${API_BASE}/api/v1/routes/optimize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ origin: orig, destination: dest })
@@ -220,7 +221,7 @@ export default function RouteOptimizer({ userSession = null }) {
   // "Best time to leave" — GBDT-model (or heuristic) ETA for the next 5 hours
   const fetchDepartureForecast = (orig, dest) => {
     setForecastLoading(true);
-    fetch('http://localhost:2001/api/v1/routes/departure-forecast', {
+    fetch(`${API_BASE}/api/v1/routes/departure-forecast`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ origin: orig, destination: dest })
@@ -252,7 +253,7 @@ export default function RouteOptimizer({ userSession = null }) {
   // Saved commutes ("My Commute") — only for signed-in users
   const fetchSavedCommutes = () => {
     if (!token) return;
-    fetch('http://localhost:2001/api/v1/my-commute', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/my-commute`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.json())
       .then((data) => Array.isArray(data) && setSavedCommutes(data))
       .catch(() => {});
@@ -264,7 +265,7 @@ export default function RouteOptimizer({ userSession = null }) {
 
   const handleSaveCommute = () => {
     const label = `${origin.split(',')[0]} → ${destination.split(',')[0]}`.slice(0, 110);
-    fetch('http://localhost:2001/api/v1/my-commute', {
+    fetch(`${API_BASE}/api/v1/my-commute`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ origin, destination, label })
@@ -283,7 +284,7 @@ export default function RouteOptimizer({ userSession = null }) {
 
   const handleDeleteCommute = (id, e) => {
     e.stopPropagation();
-    fetch(`http://localhost:2001/api/v1/my-commute/${id}`, {
+    fetch(`${API_BASE}/api/v1/my-commute/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -326,7 +327,7 @@ export default function RouteOptimizer({ userSession = null }) {
   const handleSubmitReport = (e) => {
     e.preventDefault();
     setReportSubmitting(true);
-    fetch('http://localhost:2001/api/v1/reports', {
+    fetch(`${API_BASE}/api/v1/reports`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(reportForm)
@@ -518,7 +519,7 @@ export default function RouteOptimizer({ userSession = null }) {
 
         <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Single Horizontal Row: Origin + Destination + Optimize Button */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '16px', alignItems: 'flex-end' }}>
             
             {/* 1. Origin Input */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -753,7 +754,7 @@ export default function RouteOptimizer({ userSession = null }) {
                   🚨 Active incident on this route (+{departForecast.active_incident.delay_mins} mins for the next couple of hours): {departForecast.active_incident.title}
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '12px', marginTop: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(110px, 100%), 1fr))', gap: '12px', marginTop: '16px' }}>
                 {departForecast.forecast.map((f) => {
                   const isBest = f.depart_label === departForecast.recommended.depart_label;
                   let barColor = 'var(--status-low)';
@@ -792,7 +793,7 @@ export default function RouteOptimizer({ userSession = null }) {
       )}
 
       {loading && !routeResult && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))', gap: '24px' }}>
           <div className="panel-card skeleton skeleton-block" style={{ height: '420px' }} />
           <div className="panel-card skeleton skeleton-block" style={{ height: '420px' }} />
         </div>
@@ -800,10 +801,10 @@ export default function RouteOptimizer({ userSession = null }) {
 
       {/* Split-Screen Grid (50% Map / 50% Tabbed Taskbar Route Details Panel) */}
       {routeResult && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))', gap: '24px', alignItems: 'stretch' }}>
           
           {/* LEFT HALF: Interactive Leaflet GIS Map (50% Width) */}
-          <div className="panel-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
+          <div className="panel-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div className="panel-header" style={{ marginBottom: '12px' }}>
               <div>
                 <span className="mono-eyebrow">LIVE MAP</span>

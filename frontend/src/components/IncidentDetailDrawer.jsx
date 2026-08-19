@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, Circle, Truck } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 const LIFECYCLE = ['REPORTED', 'VERIFIED', 'DISPATCHED', 'RESPONDING', 'RESOLVED'];
 
@@ -52,7 +53,7 @@ export default function IncidentDetailDrawer({ alert, userSession, onClose, onUp
 
   const pushStatus = (status) => {
     setUpdating(true);
-    fetch(`http://localhost:2001/api/v1/alerts/${alert.alert_id}/status`, {
+    fetch(`${API_BASE}/api/v1/alerts/${alert.alert_id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status }),

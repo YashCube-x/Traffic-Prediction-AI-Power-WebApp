@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KeyRound, ArrowRight } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 // Full-screen gate shown after login when the account was created by an
 // administrator with a temporary password (must_change_password = TRUE).
@@ -26,7 +27,7 @@ export default function ForcePasswordChange({ userSession, onPasswordChanged, on
     }
     setLoading(true);
 
-    fetch('http://localhost:2001/api/v1/auth/change-password', {
+    fetch(`${API_BASE}/api/v1/auth/change-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

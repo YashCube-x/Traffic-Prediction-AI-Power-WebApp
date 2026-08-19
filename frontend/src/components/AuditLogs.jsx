@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ScrollText, Search, RefreshCw } from 'lucide-react';
+import { API_BASE } from '../config.js';
 
 // Modules are derived from the action-name prefix — every audit action
 // already encodes its module (ALERT_*, USER_*, REPORT_*, ...), so there's
@@ -49,7 +50,7 @@ export default function AuditLogs({ userSession }) {
     if (fromDate) params.set('from', new Date(fromDate).toISOString());
     if (toDate) params.set('to', new Date(toDate + 'T23:59:59').toISOString());
 
-    fetch(`http://localhost:2001/api/v1/audit?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/audit?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Could not load audit log');
@@ -67,7 +68,7 @@ export default function AuditLogs({ userSession }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div className="panel-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="panel-card" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <span className="mono-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><ScrollText size={12} /> AUDIT LOGS</span>
           <h2 style={{ fontSize: '20px', fontWeight: '700', marginTop: '2px' }}>Administrative Action History</h2>
@@ -79,7 +80,7 @@ export default function AuditLogs({ userSession }) {
       </div>
 
       {/* Filters */}
-      <div className="panel-card" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="panel-card" style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: '1 1 180px' }}>
           <Search size={13} style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-body)' }} />
           <input type="text" placeholder="User email..." value={userFilter} onChange={(e) => setUserFilter(e.target.value)} style={{ ...inputStyle, width: '100%', paddingLeft: '28px' }} />

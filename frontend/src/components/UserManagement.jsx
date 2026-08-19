@@ -3,6 +3,7 @@ import { UserPlus, ShieldCheck, Copy, ScrollText, RefreshCw } from 'lucide-react
 import { useToast } from '../context/ToastContext.jsx';
 import GovAdminExtras from './GovAdminExtras.jsx';
 import SystemHealthMonitor from './SystemHealthMonitor.jsx';
+import { API_BASE } from '../config.js';
 
 const ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
 
@@ -41,7 +42,7 @@ export default function UserManagement({ userSession, onNavigate }) {
   const fetchUsers = () => {
     setLoading(true);
     setLoadError('');
-    fetch('http://localhost:2001/api/v1/users', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Could not load users');
@@ -59,7 +60,7 @@ export default function UserManagement({ userSession, onNavigate }) {
 
   const fetchAudit = () => {
     setAuditLoading(true);
-    fetch('http://localhost:2001/api/v1/audit', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/audit`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async (res) => {
         const data = await res.json().catch(() => []);
         if (!res.ok) throw new Error(data.error || 'Could not load audit log');
@@ -96,7 +97,7 @@ export default function UserManagement({ userSession, onNavigate }) {
     };
     if (formTempPass.trim()) payload.temp_password = formTempPass.trim();
 
-    fetch('http://localhost:2001/api/v1/users', {
+    fetch(`${API_BASE}/api/v1/users`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify(payload),
@@ -124,7 +125,7 @@ export default function UserManagement({ userSession, onNavigate }) {
   };
 
   const handlePatch = (userId, patch, successMsg) => {
-    fetch(`http://localhost:2001/api/v1/users/${userId}`, {
+    fetch(`${API_BASE}/api/v1/users/${userId}`, {
       method: 'PATCH',
       headers: authHeaders,
       body: JSON.stringify(patch),

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Siren, Phone, MapPin, X } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 // One shared SOS button + confirm modal, used both as a floating action
 // button (visible on every authenticated tab) and inline inside the Safety
@@ -36,7 +37,7 @@ export default function SOSButton({ userSession = null, variant = 'floating' }) 
 
     const send = (latitude, longitude) => {
       setLocating(false);
-      fetch('http://localhost:2001/api/v1/sos', {
+      fetch(`${API_BASE}/api/v1/sos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ latitude, longitude, zone_id: userSession?.assigned_zone || null }),
@@ -121,18 +122,21 @@ export default function SOSButton({ userSession = null, variant = 'floating' }) 
           >
             {!sent ? (
               <>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid var(--color-hairline)', textAlign: 'left' }}>
+                  <div>
+                    <span className="mono-eyebrow" style={{ color: 'var(--status-severe)' }}>🚨 EMERGENCY SOS</span>
+                    <h3 style={{ fontSize: '19px', fontWeight: '700', marginTop: '2px' }}>Send SOS Signal?</h3>
+                  </div>
                   <button
                     onClick={closeModal}
                     aria-label="Close"
-                    style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', width: '28px', height: '28px', borderRadius: '50%', fontSize: '14px', cursor: 'pointer' }}
+                    style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', width: '28px', height: '28px', borderRadius: '50%', fontSize: '14px', cursor: 'pointer', flexShrink: 0 }}
                   >
                     <X size={14} />
                   </button>
                 </div>
                 <Siren size={40} style={{ color: 'var(--status-severe)' }} />
-                <h3 style={{ fontSize: '19px', fontWeight: '800', marginTop: '12px' }}>Send SOS Signal?</h3>
-                <p style={{ fontSize: '13px', color: 'var(--color-body)', marginTop: '8px', lineHeight: 1.5 }}>
+                <p style={{ fontSize: '13px', color: 'var(--color-body)', marginTop: '12px', lineHeight: 1.5 }}>
                   This will share your live location with the nearest traffic operator control room right away.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
@@ -160,18 +164,21 @@ export default function SOSButton({ userSession = null, variant = 'floating' }) 
               </>
             ) : (
               <>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid var(--color-hairline)', textAlign: 'left' }}>
+                  <div>
+                    <span className="mono-eyebrow" style={{ color: 'var(--status-low)' }}>✅ SOS SENT</span>
+                    <h3 style={{ fontSize: '19px', fontWeight: '700', marginTop: '2px', color: 'var(--status-low)' }}>Control Room Notified</h3>
+                  </div>
                   <button
                     onClick={closeModal}
                     aria-label="Close"
-                    style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', width: '28px', height: '28px', borderRadius: '50%', fontSize: '14px', cursor: 'pointer' }}
+                    style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', color: 'var(--color-on-dark)', width: '28px', height: '28px', borderRadius: '50%', fontSize: '14px', cursor: 'pointer', flexShrink: 0 }}
                   >
                     <X size={14} />
                   </button>
                 </div>
                 <div style={{ fontSize: '44px' }}>✅</div>
-                <h3 style={{ fontSize: '19px', fontWeight: '800', marginTop: '8px', color: 'var(--status-low)' }}>SOS Sent</h3>
-                <p style={{ fontSize: '13px', color: 'var(--color-body)', marginTop: '8px', lineHeight: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--color-body)', marginTop: '12px', lineHeight: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                   <MapPin size={14} /> Control room notified with your location.
                 </p>
                 <button

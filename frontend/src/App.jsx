@@ -6,6 +6,7 @@ import './styles/theme.css';
 import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard, Radio, ScrollText, Settings, ClipboardList, Megaphone } from 'lucide-react';
 import { useToast } from './context/ToastContext.jsx';
 import { useTranslation } from 'react-i18next';
+import { API_BASE } from './config.js';
 
 const CONGESTION_COLORS = {
   LOW: '#34d399',
@@ -34,6 +35,8 @@ import SensorManagement from './components/SensorManagement';
 import AuditLogs from './components/AuditLogs';
 import SystemSettings from './components/SystemSettings';
 import AnnouncementsManager from './components/AnnouncementsManager';
+// Helpline directory now lives inside Safety Center's own internal tab
+// switcher (SOS | Helpline) instead of being a separate top-level nav item.
 
 const inputStyle = {
   width: '100%',
@@ -161,7 +164,7 @@ export default function App() {
     // sensors of their own assigned zone, ADMIN receives the full city.
     const headers = {};
     if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-    fetch('http://localhost:2001/api/v1/traffic/status', { headers })
+    fetch(`${API_BASE}/api/v1/traffic/status`, { headers })
       .then((res) => res.json())
       .then((data) => {
         setTrafficData(data);
@@ -308,7 +311,7 @@ export default function App() {
       congestion_level: sensorForm.congestion_level,
     };
 
-    fetch('http://localhost:2001/api/v1/traffic/telemetry', {
+    fetch(`${API_BASE}/api/v1/traffic/telemetry`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext.jsx';
 import IncidentDetailDrawer from './IncidentDetailDrawer.jsx';
+import { API_BASE } from '../config.js';
 
 export default function AlertsManager({ userSession }) {
   const { showToast } = useToast();
@@ -30,7 +31,7 @@ export default function AlertsManager({ userSession }) {
     setLoading(true);
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    fetch('http://localhost:2001/api/v1/alerts', { headers })
+    fetch(`${API_BASE}/api/v1/alerts`, { headers })
       .then((res) => res.json())
       .then((data) => {
         setAlerts(data);
@@ -106,7 +107,7 @@ export default function AlertsManager({ userSession }) {
   // Citizen reports pending verification (operator sees only own zone)
   const fetchPendingReports = () => {
     if (!token) return;
-    fetch('http://localhost:2001/api/v1/reports?status=PENDING', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/reports?status=PENDING`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.json())
       .then((data) => Array.isArray(data) && setPendingReports(data))
       .catch(() => {});
@@ -117,7 +118,7 @@ export default function AlertsManager({ userSession }) {
   }, [token]);
 
   const handleReviewReport = (reportId, decision) => {
-    fetch(`http://localhost:2001/api/v1/reports/${reportId}/${decision}`, {
+    fetch(`${API_BASE}/api/v1/reports/${reportId}/${decision}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: decision === 'approve' ? JSON.stringify({ severity: 'MODERATE', estimated_delay_mins: 10 }) : undefined,
@@ -143,7 +144,7 @@ export default function AlertsManager({ userSession }) {
   // is logged or resolved; refetching through the normal endpoint keeps the
   // operator's zone-scoping intact.
   useEffect(() => {
-    const source = new EventSource('http://localhost:2001/api/v1/events');
+    const source = new EventSource(`${API_BASE}/api/v1/events`);
     source.addEventListener('alerts_changed', (e) => {
       fetchAlerts();
       try {
@@ -159,7 +160,7 @@ export default function AlertsManager({ userSession }) {
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    fetch(`http://localhost:2001/api/v1/alerts/${alertId}/resolve`, { method: 'PATCH', headers })
+    fetch(`${API_BASE}/api/v1/alerts/${alertId}/resolve`, { method: 'PATCH', headers })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -203,7 +204,7 @@ export default function AlertsManager({ userSession }) {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    fetch('http://localhost:2001/api/v1/alerts', {
+    fetch(`${API_BASE}/api/v1/alerts`, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
@@ -258,7 +259,7 @@ export default function AlertsManager({ userSession }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <div className="panel-card skeleton skeleton-block" style={{ height: '90px' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
           {[0, 1, 2].map((i) => (
             <div className="panel-card skeleton skeleton-block" style={{ height: '180px' }} key={i} />
           ))}
@@ -341,7 +342,7 @@ export default function AlertsManager({ userSession }) {
               </h3>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px', marginTop: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '12px', marginTop: '12px' }}>
             {pendingReports.map((r) => (
               <div key={r.id} style={{ background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)', borderRadius: 'var(--radius-md)', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
@@ -379,7 +380,7 @@ export default function AlertsManager({ userSession }) {
           <p style={{ marginTop: '8px', fontSize: '13px' }}>Try a different severity filter, or log a new incident above.</p>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '16px' }}>
         {filteredAlerts.map((alert) => {
           let sevColor = 'var(--status-low)';
           if (alert.severity === 'CRITICAL') sevColor = 'var(--status-severe)';

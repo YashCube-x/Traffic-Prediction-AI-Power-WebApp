@@ -42,7 +42,7 @@ export default function PublicRoutePage({ userSession = null }) {
         </div>
       </nav>
 
-      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
+      <main style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', padding: '24px', boxSizing: 'border-box' }}>
         <RouteOptimizer userSession={userSession} />
       </main>
       <GovFooter />

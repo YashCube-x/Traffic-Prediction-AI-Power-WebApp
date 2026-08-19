@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 export default function AnalyticsDashboard() {
   const { showToast } = useToast();
@@ -8,7 +9,7 @@ export default function AnalyticsDashboard() {
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:2001/api/v1/analytics/overview')
+    fetch(`${API_BASE}/api/v1/analytics/overview`)
       .then((res) => res.json())
       .then((data) => {
         setAnalytics(data);
@@ -135,7 +136,7 @@ export default function AnalyticsDashboard() {
           <span className="mono-label">REALTIME METRICS</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginTop: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '16px', marginTop: '16px' }}>
           {analytics?.heatmaps?.map((zone) => {
             let bgGradient = 'rgba(52, 211, 153, 0.1)';
             let borderColor = 'var(--status-low)';
@@ -211,7 +212,7 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '12px', marginTop: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(80px, 100%), 1fr))', gap: '12px', marginTop: '20px' }}>
             {analytics?.hourly_trends?.map((pt) => {
               const heightPct = Math.min(100, Math.max(10, pt.congestion_rate));
               let barBg = 'var(--status-low)';

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Download } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 const inputStyle = {
   width: '100%',
@@ -23,7 +24,7 @@ export default function GovAdminExtras({ userSession }) {
   const [stats, setStats] = useState(null);
 
   const fetchStats = () => {
-    fetch('http://localhost:2001/api/v1/stats/system', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/stats/system`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.json())
       .then((data) => !data.error && setStats(data))
       .catch(() => {});
@@ -34,7 +35,7 @@ export default function GovAdminExtras({ userSession }) {
   }, []);
 
   const downloadCsv = (endpoint, filename) => {
-    fetch(`http://localhost:2001/api/v1/export/${endpoint}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/export/${endpoint}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         if (!res.ok) throw new Error('Export failed');
         return res.blob();

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Activity, ArrowRight, Eye, EyeOff, ShieldCheck, UserCheck, Car } from 'lucide-react';
+import { API_BASE } from '../config.js';
 
 export default function LoginPage({ onLoginSuccess, initialRegister = false, initialView = 'auth' }) {
   const navigate = useNavigate();
@@ -11,6 +12,14 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false, ini
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [gender, setGender] = useState('');
+  const [dob, setDob] = useState('');
+  const [age, setAge] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [aadharNumber, setAadharNumber] = useState('');
+  const [aadharPhoto, setAadharPhoto] = useState(''); // base64 data URL
+  const [aadharPhotoName, setAadharPhotoName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
@@ -27,9 +36,13 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false, ini
 
     // Public self-registration always creates a COMMUTER; operator/admin
     // accounts are created by the administrator from the User Management tab.
-    const endpoint = isRegister ? 'http://localhost:2001/api/v1/auth/register' : 'http://localhost:2001/api/v1/auth/login';
+    const endpoint = isRegister ? `${API_BASE}/api/v1/auth/register` : `${API_BASE}/api/v1/auth/login`;
     const payload = isRegister
-      ? { email, password, full_name: fullName }
+      ? {
+          email, password, full_name: fullName,
+          gender, date_of_birth: dob, age, phone, address,
+          aadhar_number: aadharNumber, aadhar_photo: aadharPhoto,
+        }
       : { email, password };
 
     fetch(endpoint, {
@@ -55,6 +68,19 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false, ini
       });
   };
 
+  const handleAadharPhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      setErrorMsg('Aadhaar photo must be smaller than 4 MB.');
+      return;
+    }
+    setAadharPhotoName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setAadharPhoto(reader.result);
+    reader.readAsDataURL(file);
+  };
+
   const handleQuickDemoLogin = (demoRole) => {
     setLoading(true);
     setErrorMsg('');
@@ -70,7 +96,7 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false, ini
       demoPass = 'commuter';
     }
 
-    fetch('http://localhost:2001/api/v1/auth/login', {
+    fetch(`${API_BASE}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: demoEmail, password: demoPass })
@@ -98,7 +124,7 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false, ini
     setInfoMsg('');
     setDevResetLink('');
 
-    fetch('http://localhost:2001/api/v1/auth/forgot-password', {
+    fetch(`${API_BASE}/api/v1/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -128,7 +154,7 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false, ini
     }
     setLoading(true);
 
-    fetch('http://localhost:2001/api/v1/auth/reset-password', {
+    fetch(`${API_BASE}/api/v1/auth/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: resetToken, new_password: newPassword })
@@ -203,39 +229,44 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false, ini
           {/* Right Side: Warm Accent Panel with Floating White Card */}
           <div className="flex-1 md:flex-[1.15] bg-gradient-to-br from-slate-50 via-amber-50/40 to-orange-50/30 p-6 md:p-10 flex flex-col items-center justify-center relative">
             
-            {/* Quick Demo Access Pills Header */}
-            <div className="w-full max-w-sm mb-4 z-10">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  QUICK DEMO PRESETS:
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin('ADMIN')}
-                  className="py-2 px-2 bg-orange-500/10 border border-orange-500/40 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-500/20 transition-all text-center flex items-center justify-center gap-1"
-                >
-                  <ShieldCheck size={13} /> ADMIN
-                </button>
+            {/* Quick Demo Access Pills Header — sign-in only. Registration
+                always creates a COMMUTER account (enforced by the backend);
+                showing ADMIN/OPERATOR shortcuts here would wrongly imply a
+                new account could become one. */}
+            {view === 'auth' && !isRegister && (
+              <div className="w-full max-w-sm mb-4 z-10">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                    QUICK DEMO PRESETS:
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('ADMIN')}
+                    className="py-2 px-2 bg-orange-500/10 border border-orange-500/40 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-500/20 transition-all text-center flex items-center justify-center gap-1"
+                  >
+                    <ShieldCheck size={13} /> ADMIN
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin('OPERATOR')}
-                  className="py-2 px-2 bg-emerald-500/10 border border-emerald-500/40 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-500/20 transition-all text-center flex items-center justify-center gap-1"
-                >
-                  <UserCheck size={13} /> OPERATOR
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('OPERATOR')}
+                    className="py-2 px-2 bg-emerald-500/10 border border-emerald-500/40 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-500/20 transition-all text-center flex items-center justify-center gap-1"
+                  >
+                    <UserCheck size={13} /> OPERATOR
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin('COMMUTER')}
-                  className="py-2 px-2 bg-indigo-500/10 border border-indigo-500/40 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-500/20 transition-all text-center flex items-center justify-center gap-1"
-                >
-                  <Car size={13} /> COMMUTER
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('COMMUTER')}
+                    className="py-2 px-2 bg-indigo-500/10 border border-indigo-500/40 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-500/20 transition-all text-center flex items-center justify-center gap-1"
+                  >
+                    <Car size={13} /> COMMUTER
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Floating White Card */}
             <div className="w-full max-w-sm bg-white rounded-2xl p-7 shadow-xl border border-slate-200/60 relative z-10 text-slate-900">
@@ -402,6 +433,101 @@ export default function LoginPage({ onLoginSuccess, initialRegister = false, ini
                     </button>
                   </div>
                 </div>
+
+                {isRegister && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                          Gender
+                        </label>
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
+                        >
+                          <option value="">Select</option>
+                          <option value="FEMALE">Female</option>
+                          <option value="MALE">Male</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                          Age
+                        </label>
+                        <input
+                          type="number" min="0" max="120"
+                          value={age}
+                          onChange={(e) => setAge(e.target.value)}
+                          placeholder="e.g. 24"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                        Date of Birth
+                      </label>
+                      <input
+                        type="date"
+                        value={dob}
+                        onChange={(e) => setDob(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="e.g. 9876543210"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                        Address
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="House no., street, area, city"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                        Aadhaar Number
+                      </label>
+                      <input
+                        type="text" inputMode="numeric" maxLength={12}
+                        value={aadharNumber}
+                        onChange={(e) => setAadharNumber(e.target.value.replace(/\D/g, ''))}
+                        placeholder="12-digit Aadhaar number"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900/10 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                        Aadhaar ID Photo
+                      </label>
+                      <label className="flex items-center justify-center gap-2 w-full px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-500 text-xs font-medium cursor-pointer hover:bg-slate-100 transition-all">
+                        {aadharPhotoName || 'Choose a photo (JPG/PNG, under 4 MB)'}
+                        <input type="file" accept="image/*" onChange={handleAadharPhotoChange} className="hidden" />
+                      </label>
+                    </div>
+                  </>
+                )}
 
                 {isRegister && (
                   <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-200 rounded-xl p-3">

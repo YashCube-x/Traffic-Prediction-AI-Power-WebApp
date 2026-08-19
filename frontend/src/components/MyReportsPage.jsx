@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, Plus, X, Clock, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
-const API = 'http://localhost:2001/api/v1';
+const API = `${API_BASE}/api/v1`;
 const VALID_ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
 const ZONE_LABELS = {
   ZONE_CENTRAL: 'Central Zone', ZONE_NORTH: 'North Zone', ZONE_SOUTH: 'South Zone',
@@ -126,7 +127,7 @@ export default function MyReportsPage({ userSession = null }) {
         </div>
 
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px,1fr))', gap: '12px', marginTop: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%),1fr))', gap: '12px', marginTop: '14px' }}>
             {[0, 1].map((i) => <div key={i} className="skeleton skeleton-block" style={{ height: '110px', borderRadius: 'var(--radius-md)' }} />)}
           </div>
         ) : reports.length === 0 ? (
@@ -141,7 +142,7 @@ export default function MyReportsPage({ userSession = null }) {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px,1fr))', gap: '12px', marginTop: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%),1fr))', gap: '12px', marginTop: '14px' }}>
             {reports.map((r) => {
               const meta = STATUS_META[r.tracking_status] || STATUS_META.PENDING;
               const StatusIcon = meta.Icon;

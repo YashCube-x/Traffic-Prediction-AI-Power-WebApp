@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Megaphone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { API_BASE } from '../config.js';
 
 // Scrolling circulars/notices strip — the classic government-portal
 // "Latest Announcements" ticker.
@@ -9,7 +10,7 @@ export default function NoticeTicker() {
   const [notices, setNotices] = useState([]);
 
   const fetchNotices = () => {
-    fetch('http://localhost:2001/api/v1/notices')
+    fetch(`${API_BASE}/api/v1/notices`)
       .then((res) => res.json())
       .then((data) => Array.isArray(data) && setNotices(data))
       .catch(() => {});
@@ -17,7 +18,7 @@ export default function NoticeTicker() {
 
   useEffect(() => {
     fetchNotices();
-    const source = new EventSource('http://localhost:2001/api/v1/events');
+    const source = new EventSource(`${API_BASE}/api/v1/events`);
     source.addEventListener('notices_changed', fetchNotices);
     return () => source.close();
   }, []);

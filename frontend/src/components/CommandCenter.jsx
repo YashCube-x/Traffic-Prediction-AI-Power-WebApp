@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { API_BASE } from '../config.js';
 import {
   RefreshCw, AlertTriangle, Radio, Gauge, Activity, Route as RouteIcon,
   Cpu, ChevronRight, MapPin,
@@ -51,10 +52,10 @@ export default function CommandCenter({ userSession, onNavigate }) {
   const fetchAll = useCallback(() => {
     setLoading(true);
     Promise.all([
-      fetch('http://localhost:2001/api/v1/traffic/status', { headers: authHeaders }).then(r => r.json()).catch(() => null),
-      fetch('http://localhost:2001/api/v1/alerts', { headers: authHeaders }).then(r => r.json()).catch(() => []),
-      fetch('http://localhost:2001/api/v1/system/health', { headers: authHeaders }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('http://localhost:2001/api/v1/reports?status=PENDING', { headers: authHeaders }).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_BASE}/api/v1/traffic/status`, { headers: authHeaders }).then(r => r.json()).catch(() => null),
+      fetch(`${API_BASE}/api/v1/alerts`, { headers: authHeaders }).then(r => r.json()).catch(() => []),
+      fetch(`${API_BASE}/api/v1/system/health`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${API_BASE}/api/v1/reports?status=PENDING`, { headers: authHeaders }).then(r => r.ok ? r.json() : []).catch(() => []),
     ]).then(([trafficData, alertsData, healthData, reportsData]) => {
       setTraffic(trafficData);
       setAlerts(Array.isArray(alertsData) ? alertsData : []);
@@ -319,7 +320,7 @@ export default function CommandCenter({ userSession, onNavigate }) {
       </div>
 
       {/* Live City Map + Zone Status */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(260px, 1fr)', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(min(260px, 100%), 1fr)', gap: '20px' }}>
         <div className="panel-card" style={{ padding: '16px' }}>
           <div className="panel-header" style={{ marginBottom: '10px' }}>
             <div>
@@ -381,7 +382,7 @@ export default function CommandCenter({ userSession, onNavigate }) {
             Open Incident Control <ChevronRight size={12} />
           </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', marginTop: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '10px', marginTop: '10px' }}>
           {alerts.slice(0, 4).map((a) => (
             <div key={a.alert_id} style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', borderLeft: `3px solid ${a.is_resolved ? 'var(--status-low)' : 'var(--status-severe)'}`, opacity: a.is_resolved ? 0.6 : 1 }}>
               <div style={{ fontSize: '12px', fontWeight: '700' }}>{a.title}</div>

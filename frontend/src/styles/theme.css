@@ -203,6 +203,15 @@ body {
   min-height: 100vh;
 }
 
+/* Flex items in a column-direction container default to a content-based
+   automatic minimum size on the cross axis (width) — so a wide row buried
+   deep inside <main> (a grid, a table, a nowrap label) could force the
+   whole page wider than the viewport on narrow screens. Zeroing it out on
+   every direct child is the standard fix for this class of bug. */
+.app-container > * {
+  min-width: 0;
+}
+
 /* App Shell: sidebar (desktop) + main column */
 .app-shell {
   display: flex;
@@ -961,7 +970,7 @@ textarea:focus-visible,
     bottom: 0;
     right: 25%;
     max-width: 320px;
-    background: var(--color-surface, #12182b);
+    background: var(--color-surface-card);
     border-right: 1px solid var(--color-hairline);
     box-shadow: 12px 0 32px rgba(0, 0, 0, 0.35);
     z-index: 999;
@@ -1262,6 +1271,7 @@ body.gov-high-contrast * {
 
 .gov-notice-track {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
 }
@@ -1350,6 +1360,21 @@ body.gov-high-contrast * {
 @keyframes spin-rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Browser autofill (e.g. Chrome's saved-credentials yellow highlight)
+   overrides an input's background/text color by default, regardless of
+   its actual CSS - this forces autofilled fields to keep their intended
+   white/dark-text look instead of the browser's yellow/olive tint. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 

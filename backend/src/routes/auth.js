@@ -111,14 +111,30 @@ router.post('/auth/login', loginLimiter, async (req, res) => {
 // POST /api/v1/auth/register
 // SECURITY: public self-registration always creates a COMMUTER. OPERATOR and
 // ADMIN accounts can only be created by an ADMIN via POST /api/v1/users.
+const VALID_GENDERS = ['MALE', 'FEMALE', 'OTHER'];
+
 router.post('/auth/register', registerLimiter, async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const password = req.body.password || '';
   const fullName = req.body.full_name || 'Smart City User';
   const role = 'COMMUTER';
 
+  const gender = VALID_GENDERS.includes((req.body.gender || '').toUpperCase()) ? req.body.gender.toUpperCase() : null;
+  const dateOfBirth = req.body.date_of_birth || null;
+  const age = Number.isFinite(parseInt(req.body.age, 10)) ? parseInt(req.body.age, 10) : null;
+  const phone = (req.body.phone || '').trim() || null;
+  const address = (req.body.address || '').trim() || null;
+  const aadharNumber = (req.body.aadhar_number || '').replace(/\s+/g, '') || null;
+  const aadharPhoto = req.body.aadhar_photo || null; // base64 data URL, or null if not provided
+
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
+  }
+  if (aadharNumber && !/^\d{12}$/.test(aadharNumber)) {
+    return res.status(400).json({ error: 'Aadhaar number must be exactly 12 digits' });
+  }
+  if (age !== null && (age < 0 || age > 120)) {
+    return res.status(400).json({ error: 'Please enter a valid age' });
   }
 
   try {
@@ -127,10 +143,13 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
 
     try {
       const { rows } = await pool.query(`
-        INSERT INTO users (id, email, password_hash, full_name, role, is_active, created_at)
-        VALUES ($1, $2, $3, $4, $5, TRUE, CURRENT_TIMESTAMP)
+        INSERT INTO users (
+          id, email, password_hash, full_name, role, is_active, created_at,
+          gender, date_of_birth, age, phone, address, aadhar_number, aadhar_photo
+        )
+        VALUES ($1, $2, $3, $4, $5, TRUE, CURRENT_TIMESTAMP, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id, email, full_name, role;
-      `, [userId, email, passwordHash, fullName, role]);
+      `, [userId, email, passwordHash, fullName, role, gender, dateOfBirth, age, phone, address, aadharNumber, aadharPhoto]);
 
       const newUser = rows[0];
       const token = jwt.sign(

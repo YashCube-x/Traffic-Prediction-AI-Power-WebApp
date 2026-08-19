@@ -51,6 +51,16 @@ async function initDatabase() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(100);`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(20);`);
+    // Extended registration profile (gender/age/DOB/address/Aadhaar). Aadhaar
+    // photo is stored as a base64 data URL — this is a demo/student project
+    // with no UIDAI AUA/KUA authorization, so this data has no real identity-
+    // verification purpose; it is stored only because it was requested.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(20);`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE;`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS age INTEGER;`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(500);`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aadhar_number VARCHAR(20);`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aadhar_photo TEXT;`);
     // "USR-" + uuid is 40 chars; original schema was VARCHAR(36)
     await client.query(`ALTER TABLE users ALTER COLUMN id TYPE VARCHAR(50);`);
     // The table may originally have been created by SQLAlchemy, whose
@@ -242,6 +252,48 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Admin-managed helpline directory. Single source of truth for every
+    // page that shows helpline numbers (Safety Center, the dedicated
+    // Helpline tab, the public landing/route-check pages) so an admin only
+    // has to update a number once.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS helplines (
+        id SERIAL PRIMARY KEY,
+        label VARCHAR(100) NOT NULL,
+        number VARCHAR(20) NOT NULL,
+        category VARCHAR(30) NOT NULL DEFAULT 'Emergency',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        updated_by VARCHAR(255),
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    const { rows: helplineCount } = await client.query('SELECT COUNT(*) AS count FROM helplines');
+    if (parseInt(helplineCount[0].count, 10) === 0) {
+      console.log('🌱 Seeding default helpline directory into Neon PostgreSQL...');
+      await client.query(`
+        INSERT INTO helplines (label, number, category, sort_order) VALUES
+          ('Emergency (All Services)', '112', 'Emergency', 0),
+          ('Police', '100', 'Emergency', 1),
+          ('Fire', '101', 'Emergency', 2),
+          ('Disaster Management (NDMA)', '1078', 'Emergency', 3),
+          ('Ambulance', '108', 'Health', 4),
+          ('National Health Helpline', '104', 'Health', 5),
+          ('Women Helpline (National)', '181', 'Safety', 6),
+          ('Women Helpline (Police)', '1091', 'Safety', 7),
+          ('Child Helpline', '1098', 'Safety', 8),
+          ('Senior Citizen Helpline', '14567', 'Safety', 9),
+          ('Cyber Crime Helpline', '1930', 'Safety', 10),
+          ('Traffic Police', '103', 'Traffic', 11),
+          ('Road Accident Emergency (Highway)', '1073', 'Traffic', 12),
+          ('Railway Enquiry', '139', 'Transport', 13),
+          ('Tourist Helpline', '1363', 'Transport', 14),
+          ('LPG Gas Leak Emergency', '1906', 'Utility', 15)
+        ON CONFLICT DO NOTHING;
+      `);
+    }
 
     // Seed the demo incidents once, so a fresh database isn't empty
     const { rows: alertCount } = await client.query('SELECT COUNT(*) AS count FROM alerts');

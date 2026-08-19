@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Save, AlertCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 const inputStyle = {
   width: '100%',
@@ -30,7 +31,7 @@ export default function SystemSettings({ userSession }) {
 
   const fetchSettings = () => {
     setLoading(true);
-    fetch('http://localhost:2001/api/v1/settings', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/settings`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.json())
       .then((data) => {
         setSettings(data);
@@ -47,7 +48,7 @@ export default function SystemSettings({ userSession }) {
 
   const saveSection = (key, value) => {
     setSaving(true);
-    fetch('http://localhost:2001/api/v1/settings', {
+    fetch(`${API_BASE}/api/v1/settings`, {
       method: 'PUT',
       headers: authHeaders,
       body: JSON.stringify({ [key]: value }),
@@ -117,7 +118,7 @@ export default function SystemSettings({ userSession }) {
       {/* Congestion Thresholds */}
       <div className="panel-card">
         <div className="panel-header"><div><span className="mono-eyebrow">CONGESTION THRESHOLDS</span><h3 style={{ fontSize: '15px', fontWeight: '600' }}>Density Percentage Bands</h3></div></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px', marginTop: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))', gap: '14px', marginTop: '12px' }}>
           <div>
             <span className="mono-label" style={{ fontSize: '11px', display: 'block', marginBottom: '4px', color: 'var(--status-low)' }}>LOW — below</span>
             <input type="number" value={thresholds.low_max} onChange={(e) => setThresholds({ ...thresholds, low_max: parseFloat(e.target.value) || 0 })} style={inputStyle} />

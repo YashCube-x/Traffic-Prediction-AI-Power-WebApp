@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Megaphone, Send, Trash2, RefreshCw } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 const inputStyle = {
   width: '100%',
@@ -27,7 +28,7 @@ export default function AnnouncementsManager({ userSession }) {
 
   const fetchNotices = () => {
     setLoading(true);
-    fetch('http://localhost:2001/api/v1/notices/all', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/notices/all`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.json())
       .then((data) => { if (Array.isArray(data)) setNotices(data); setLoading(false); })
       .catch(() => setLoading(false));
@@ -38,7 +39,7 @@ export default function AnnouncementsManager({ userSession }) {
   const handlePublish = (e) => {
     e.preventDefault();
     setPublishing(true);
-    fetch('http://localhost:2001/api/v1/notices', {
+    fetch(`${API_BASE}/api/v1/notices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(noticeForm),
@@ -61,7 +62,7 @@ export default function AnnouncementsManager({ userSession }) {
   };
 
   const handleArchive = (id) => {
-    fetch(`http://localhost:2001/api/v1/notices/${id}/archive`, {
+    fetch(`${API_BASE}/api/v1/notices/${id}/archive`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}` },
     })

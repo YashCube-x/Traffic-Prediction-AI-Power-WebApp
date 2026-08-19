@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Eye, X, AlertTriangle, Radio } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { API_BASE } from '../config.js';
 
 // Threshold-based anomaly detection (no ML/statistical model — simple
 // configurable bounds, documented here since there is no System Settings
@@ -66,7 +67,7 @@ export default function SensorManagement({ userSession }) {
 
   const fetchSensors = () => {
     setLoading(true);
-    fetch('http://localhost:2001/api/v1/traffic/status', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/api/v1/traffic/status`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Could not load sensor network');
@@ -150,7 +151,7 @@ export default function SensorManagement({ userSession }) {
               <h3 style={{ fontSize: '16px', fontWeight: '600' }}>{anomalyList.length} sensor{anomalyList.length > 1 ? 's' : ''} flagged</h3>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px', marginTop: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '10px', marginTop: '10px' }}>
             {anomalyList.map((s) => (
               <div key={s.sensor_id} style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-dark-soft)', borderLeft: `3px solid ${statusColor[s.status]}` }}>
                 <strong style={{ fontSize: '13px' }}>{s.sensor_id}</strong>

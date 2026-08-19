@@ -17,12 +17,21 @@ const safetyRoutes = require('./routes/safety');
 const placesRoutes = require('./routes/places');
 const systemRoutes = require('./routes/system');
 const settingsRoutes = require('./routes/settings');
+const helplinesRoutes = require('./routes/helplines');
 
 const app = express();
 const PORT = process.env.PORT || 2001;
 
-app.use(cors());
-app.use(express.json());
+// In production, restrict cross-origin requests to the deployed frontend
+// (set FRONTEND_URL, e.g. https://your-app.vercel.app). Left wide open
+// outside production so local dev on any port keeps working unchanged —
+// FRONTEND_URL is already used for password-reset email links locally and
+// isn't necessarily the same origin you're testing the frontend from.
+const isProd = process.env.NODE_ENV === 'production';
+app.use(cors(isProd && process.env.FRONTEND_URL ? { origin: process.env.FRONTEND_URL } : {}));
+// Raised from the 100kb default so registration's base64-encoded Aadhaar
+// photo (sent as a JSON string, no multipart/multer setup in this API) fits.
+app.use(express.json({ limit: '6mb' }));
 
 // API Routes
 app.use('/api/v1', healthRoutes);
@@ -42,6 +51,7 @@ app.use('/api/v1', safetyRoutes);
 app.use('/api/v1', placesRoutes);
 app.use('/api/v1', systemRoutes);
 app.use('/api/v1', settingsRoutes);
+app.use('/api/v1', helplinesRoutes);
 
 
 

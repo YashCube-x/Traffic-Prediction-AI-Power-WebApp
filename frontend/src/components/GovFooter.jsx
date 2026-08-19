@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Phone, ShieldCheck, Eye } from 'lucide-react';
+import { API_BASE } from '../config.js';
 
 // Government-portal-style footer: helpline numbers, standard policy links,
 // visitor counter and a "last content review" date.
@@ -13,7 +14,7 @@ export default function GovFooter() {
     const alreadyCounted = sessionStorage.getItem(key);
     const method = alreadyCounted ? 'GET' : 'POST';
 
-    fetch('http://localhost:2001/api/v1/stats/visit', { method })
+    fetch(`${API_BASE}/api/v1/stats/visit`, { method })
       .then((res) => res.json())
       .then((data) => {
         setVisitors(data.visitors);

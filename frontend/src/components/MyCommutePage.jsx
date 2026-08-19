@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { API_BASE } from '../config.js';
 import {
   Star, Plus, ArrowLeftRight, Clock, CheckCircle2, AlertTriangle, Loader2,
   Home, Briefcase, GraduationCap, MapPin, Navigation2, X,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
 
-const API = 'http://localhost:2001/api/v1';
+const API = `${API_BASE}/api/v1`;
 
 const PLACE_ICONS = { Home, Office: Briefcase, College: GraduationCap };
 const WHAT_IF_PRESETS = [
@@ -415,7 +416,7 @@ export default function MyCommutePage({ userSession = null }) {
       </div>
 
       {/* Two-column: setup + best time + comparison | summary + traffic + incident */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(420px, 100%), 1fr))', gap: '24px', alignItems: 'start' }}>
 
         {/* LEFT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
@@ -431,7 +432,7 @@ export default function MyCommutePage({ userSession = null }) {
 
             <form onSubmit={handlePlanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <span className="mono-label" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                     <Home size={12} /> FROM
                     <button type="button" onClick={handleUseMyLocation} disabled={locating}
@@ -528,7 +529,7 @@ export default function MyCommutePage({ userSession = null }) {
                   <div style={{ marginTop: '14px', padding: '18px', borderRadius: 'var(--radius-md)', background: 'rgba(252,76,2,0.08)', border: '1.5px solid var(--accent-orange)' }}>
                     <span className="mono-eyebrow" style={{ color: 'var(--accent-orange)' }}>★ RECOMMENDED</span>
                     <div style={{ fontSize: '26px', fontWeight: '800', marginTop: '6px' }}>Leave at {recommended.depart_label}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px,1fr))', gap: '14px', marginTop: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(120px, 100%),1fr))', gap: '14px', marginTop: '16px' }}>
                       <div>
                         <span className="mono-label" style={{ fontSize: '10px' }}>TRAVEL TIME</span>
                         <div style={{ fontSize: '20px', fontWeight: '700' }}>{recommended.eta_mins} min</div>
@@ -576,7 +577,7 @@ export default function MyCommutePage({ userSession = null }) {
                   <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Compare departure times</h3>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '12px', marginTop: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(110px, 100%), 1fr))', gap: '12px', marginTop: '14px' }}>
                 {forecast.forecast.map((f) => {
                   const isBest = f.depart_label === recommended.depart_label;
                   const status = isBest ? '★ Best' : (f.congestion === 'HEAVY' || f.congestion === 'SEVERE') ? 'Avoid' : 'Good';
@@ -642,7 +643,7 @@ export default function MyCommutePage({ userSession = null }) {
             <div className="panel-card" style={{ borderLeft: '4px solid var(--status-severe)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                 <span style={{ fontSize: '20px' }}>🚨</span>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <span className="mono-eyebrow" style={{ color: 'var(--status-severe)' }}>ROUTE ALERT</span>
                   <div style={{ fontSize: '14px', fontWeight: '700', marginTop: '4px' }}>
                     An incident near {recommendedRoute.affected_by_incident.title} is affecting your usual route.
@@ -767,7 +768,7 @@ export default function MyCommutePage({ userSession = null }) {
           ) : routeError ? (
             <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--status-severe)' }}>⚠️ {routeError}</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginTop: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '14px', marginTop: '14px' }}>
               {routeResult?.routes?.map((route, idx) => {
                 const isSelected = route.route_id === selectedRouteId;
                 return (
