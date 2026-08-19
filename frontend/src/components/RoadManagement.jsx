@@ -46,6 +46,8 @@ export default function RoadManagement({ userSession }) {
   const [roads, setRoads] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [operatorsByZone, setOperatorsByZone] = useState({});
+  const [operatorList, setOperatorList] = useState([]);
+  const [reassigning, setReassigning] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [videoRoad, setVideoRoad] = useState(null);
@@ -75,13 +77,39 @@ export default function RoadManagement({ userSession }) {
     fetch(`${API_BASE}/api/v1/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => res.json())
       .then((users) => {
+        const operators = (users || []).filter((u) => u.role === 'OPERATOR' && u.is_active);
         const map = {};
-        (users || []).filter((u) => u.role === 'OPERATOR' && u.assigned_zone && u.is_active).forEach((u) => {
+        operators.filter((u) => u.assigned_zone).forEach((u) => {
           (map[u.assigned_zone] = map[u.assigned_zone] || []).push(u.full_name || u.email);
         });
         setOperatorsByZone(map);
+        setOperatorList(operators);
       })
       .catch(() => {});
+  };
+
+  // Assigning here means "move this operator's zone to this road's zone" —
+  // an operator has exactly one assigned_zone, so picking them here
+  // reassigns them the same way editing their zone in User Management would.
+  const assignOperator = (zoneId, operatorId) => {
+    if (!operatorId) return;
+    setReassigning(operatorId);
+    fetch(`${API_BASE}/api/v1/users/${operatorId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ assigned_zone: zoneId }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Could not assign this operator');
+        return data;
+      })
+      .then((updated) => {
+        setReassigning(null);
+        fetchOperators();
+        showToast(`${updated.full_name || updated.email} is now assigned to ${ZONE_LABELS[zoneId] || zoneId}.`, 'success');
+      })
+      .catch((err) => { setReassigning(null); showToast(err.message, 'error'); });
   };
 
   useEffect(() => { fetchRoads(); fetchAlerts(); fetchOperators(); }, [token]);
@@ -193,7 +221,32 @@ export default function RoadManagement({ userSession }) {
                         <div style={{ fontWeight: '600' }}>{r.location.road_name}</div>
                         <span className="mono-label" style={{ fontSize: '10px' }}>{ZONE_LABELS[r.location.zone_id] || r.location.zone_id} • {r.sensor_id}</span>
                       </td>
-                      <td style={{ fontSize: '13px' }}>{opInfo.names.length ? opInfo.names.join(', ') : <span style={{ color: 'var(--color-body)' }}>Unassigned</span>}</td>
+                      <td style={{ fontSize: '13px' }}>
+                        {isAdmin ? (
+                          <select
+                            value={operatorList.find((o) => o.assigned_zone === r.location.zone_id)?.id || ''}
+                            onChange={(e) => assignOperator(r.location.zone_id, e.target.value)}
+                            disabled={reassigning !== null}
+                            style={{
+                              width: '100%', padding: '6px 8px', borderRadius: 'var(--radius-sm)',
+                              background: 'var(--color-surface-dark-soft)', border: '1px solid var(--color-hairline)',
+                              color: 'var(--color-on-dark)', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                            }}
+                          >
+                            <option value="" disabled style={{ color: '#0f172a', background: '#fff' }}>Unassigned</option>
+                            {operatorList.map((op) => (
+                              <option key={op.id} value={op.id} style={{ color: '#0f172a', background: '#fff' }}>
+                                {op.full_name || op.email}{op.assigned_zone !== r.location.zone_id ? ` (currently ${op.assigned_zone ? (ZONE_LABELS[op.assigned_zone] || op.assigned_zone) : 'unassigned'})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          opInfo.names.length ? opInfo.names.join(', ') : <span style={{ color: 'var(--color-body)' }}>Unassigned</span>
+                        )}
+                        {opInfo.names.length > 1 && (
+                          <div className="mono-label" style={{ fontSize: '9px', marginTop: '2px' }}>+{opInfo.names.length - 1} more covering this zone</div>
+                        )}
+                      </td>
                       <td style={{ fontFamily: 'var(--font-mono)' }}>{opInfo.count}</td>
                       <td><span className={`status-badge ${r.metrics.congestion_level}`}>{r.metrics.congestion_level}</span></td>
                       <td style={{ fontFamily: 'var(--font-mono)' }}>{r.metrics.avg_speed_kmh} km/h</td>
