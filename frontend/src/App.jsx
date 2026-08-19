@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './styles/theme.css';
-import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard, Radio, ScrollText, Settings, ClipboardList, Megaphone } from 'lucide-react';
+import { Sun, Moon, User as UserIcon, LogOut, Activity, Navigation, AlertTriangle, BarChart2, TrendingUp, Menu, X, Users, ShieldAlert, Star, LayoutDashboard, Radio, ScrollText, Settings, ClipboardList, Megaphone, Signpost } from 'lucide-react';
 import { useToast } from './context/ToastContext.jsx';
 import { useTranslation } from 'react-i18next';
 import { API_BASE } from './config.js';
@@ -35,6 +35,7 @@ import SensorManagement from './components/SensorManagement';
 import AuditLogs from './components/AuditLogs';
 import SystemSettings from './components/SystemSettings';
 import AnnouncementsManager from './components/AnnouncementsManager';
+import RoadManagement from './components/RoadManagement';
 // Helpline directory now lives inside Safety Center's own internal tab
 // switcher (SOS | Helpline) instead of being a separate top-level nav item.
 
@@ -58,6 +59,7 @@ const NAV_ITEMS = [
   { tab: 'reports', labelKey: 'navigation.myReports', Icon: ClipboardList, roles: ['COMMUTER'] },
   { tab: 'alerts', labelKey: 'navigation.incidentControl', Icon: AlertTriangle, roles: ['ADMIN', 'OPERATOR'] },
   { tab: 'sensors', labelKey: 'navigation.sensorManagement', Icon: Radio, roles: ['ADMIN'] },
+  { tab: 'roads', labelKey: 'navigation.roadManagement', Icon: Signpost, roles: ['ADMIN', 'OPERATOR'] },
   { tab: 'safety', labelKey: 'navigation.safetyCenter', Icon: ShieldAlert, roles: ['ADMIN', 'OPERATOR', 'COMMUTER'] },
   { tab: 'analytics', labelKey: 'navigation.analytics', Icon: BarChart2, roles: ['ADMIN'] },
   { tab: 'users', labelKey: 'navigation.userManagement', Icon: Users, roles: ['ADMIN'] },
@@ -707,6 +709,9 @@ export default function App() {
                 )}
                 {activeTab === 'sensors' && (
                   <SensorManagement userSession={userSession} />
+                )}
+                {activeTab === 'roads' && (
+                  <RoadManagement userSession={userSession} />
                 )}
                 {activeTab === 'dashboard' && (
                   <>

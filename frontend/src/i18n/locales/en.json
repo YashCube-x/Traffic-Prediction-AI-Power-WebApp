@@ -52,6 +52,7 @@
     "analytics": "Analytics",
     "userManagement": "User Management",
     "sensorManagement": "Sensor Management",
+    "roadManagement": "Road Management",
     "aiModelControl": "AI Model Control",
     "auditLogs": "Audit Logs",
     "announcements": "Announcements",
