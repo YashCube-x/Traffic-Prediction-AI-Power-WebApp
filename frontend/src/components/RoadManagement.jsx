@@ -5,11 +5,16 @@ import {
 import { useToast } from '../context/ToastContext.jsx';
 import { API_BASE } from '../config.js';
 
-// A public, safe-for-work, long-standing embeddable video (Blender
-// Foundation's "Big Buck Bunny") — a stand-in until real per-road camera
-// feeds exist. Deliberately labelled as a placeholder everywhere it's
-// shown so nobody mistakes it for an actual live feed of that road.
-const PLACEHOLDER_VIDEO_ID = 'aqz-KE-bpKQ';
+// Placeholder videos — a stand-in until real per-road camera feeds exist.
+// Deliberately labelled as a placeholder everywhere it's shown so nobody
+// mistakes it for an actual live feed of that road. Two clips rotate across
+// roads (by a stable hash of the sensor id) purely for visual variety.
+const PLACEHOLDER_VIDEO_IDS = ['zxxfvP8-lrU', '7LrWGGJFEJo'];
+function placeholderVideoFor(sensorId) {
+  let h = 0;
+  for (let i = 0; i < sensorId.length; i++) h = (h * 31 + sensorId.charCodeAt(i)) >>> 0;
+  return PLACEHOLDER_VIDEO_IDS[h % PLACEHOLDER_VIDEO_IDS.length];
+}
 
 const VALID_ZONES = ['ZONE_CENTRAL', 'ZONE_NORTH', 'ZONE_SOUTH', 'ZONE_EAST', 'ZONE_WEST'];
 const ZONE_LABELS = {
@@ -302,7 +307,7 @@ export default function RoadManagement({ userSession }) {
             </div>
             <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: '#000' }}>
               <iframe
-                src={`https://www.youtube.com/embed/${PLACEHOLDER_VIDEO_ID}?autoplay=1`}
+                src={`https://www.youtube.com/embed/${placeholderVideoFor(videoRoad.sensor_id)}?autoplay=1`}
                 title={`Live video placeholder for ${videoRoad.location.road_name}`}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
                 allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
@@ -311,7 +316,7 @@ export default function RoadManagement({ userSession }) {
             <p style={{ fontSize: '11px', color: 'var(--color-body)', marginTop: '10px' }}>
               Placeholder feed — not an actual live camera at this road. Wire up a real per-road stream URL here once one exists.
             </p>
-            <a href={`https://www.youtube.com/watch?v=${PLACEHOLDER_VIDEO_ID}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '12px', color: 'var(--accent-mint-text)' }}>
+            <a href={`https://www.youtube.com/watch?v=${placeholderVideoFor(videoRoad.sensor_id)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '12px', color: 'var(--accent-mint-text)' }}>
               Open on YouTube <ExternalLink size={12} />
             </a>
           </div>
