@@ -10,6 +10,103 @@ import {
 const CONGESTION_COLORS = { LOW: '#34d399', MODERATE: '#fbbf24', HEAVY: '#f97316', SEVERE: '#ef4444' };
 const CONGESTION_RANK = { LOW: 0, MODERATE: 1, HEAVY: 2, SEVERE: 3 };
 
+// Fixed categorical order for zone IDENTITY (never reused for congestion
+// state, which is the separate reserved status palette above). Validated
+// colorblind-safe as a set — see scripts/validate_palette.js in the dataviz
+// skill (CVD ΔE >= 7.9 on every adjacent pair, both light and dark surface).
+const ZONE_COLOR = {
+  ZONE_CENTRAL: '#fc4c02',
+  ZONE_NORTH: '#ef2cc1',
+  ZONE_EAST: '#3b82f6',
+  ZONE_WEST: '#059669',
+  ZONE_SOUTH: '#d97706',
+};
+
+// A donut built from plain SVG circles (stroke-dasharray trick) — no
+// charting library in this project. Each zone gets a 2px gap from its
+// neighbours (mark spec) and every slice is direct-labelled in the legend,
+// since color alone is never the only way to tell zones apart.
+function ZoneDonut({ zones, size = 148, thickness = 22 }) {
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const total = zones.reduce((sum, z) => sum + z.vehicles, 0) || 1;
+  const r = (size - thickness) / 2;
+  const circumference = 2 * Math.PI * r;
+  const gap = 3; // px of circumference reserved as a visible gap per slice
+  let offsetSoFar = 0;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
+      <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-hairline)" strokeWidth={thickness} />
+          {zones.map((z, i) => {
+            const share = z.vehicles / total;
+            const len = Math.max(0, share * circumference - gap);
+            const dashArray = `${len} ${circumference - len}`;
+            const dashOffset = -offsetSoFar;
+            offsetSoFar += share * circumference;
+            return (
+              <circle
+                key={z.zoneId}
+                cx={size / 2} cy={size / 2} r={r} fill="none"
+                stroke={ZONE_COLOR[z.zoneId] || '#94a3b8'} strokeWidth={thickness}
+                strokeDasharray={dashArray} strokeDashoffset={dashOffset} strokeLinecap="butt"
+                onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}
+                style={{ cursor: 'pointer', opacity: hoverIdx === null || hoverIdx === i ? 1 : 0.35, transition: 'opacity 0.15s ease' }}
+              />
+            );
+          })}
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <span style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-ink)', fontFamily: 'var(--font-mono)' }}>
+            {hoverIdx !== null ? zones[hoverIdx].vehicles.toLocaleString('en-IN') : total.toLocaleString('en-IN')}
+          </span>
+          <span className="mono-label" style={{ fontSize: '9px' }}>{hoverIdx !== null ? zones[hoverIdx].zoneId.replace('ZONE_', '') : 'VEHICLES'}</span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '120px' }}>
+        {zones.map((z, i) => {
+          const pct = Math.round((z.vehicles / total) * 100);
+          return (
+            <div
+              key={z.zoneId}
+              onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', opacity: hoverIdx === null || hoverIdx === i ? 1 : 0.5 }}
+            >
+              <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: ZONE_COLOR[z.zoneId] || '#94a3b8', flexShrink: 0 }} />
+              <span style={{ color: 'var(--color-ink)', fontWeight: '600', flex: 1 }}>{z.zoneId.replace('ZONE_', '')}</span>
+              <span className="mono-label" style={{ fontSize: '11px' }}>{pct}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Horizontal bar mark: thin track, rounded data-end, colored by congestion
+// STATUS (the reserved status palette — not zone identity), value direct-
+// labelled at the bar end rather than relying on a shared axis.
+function ZoneSpeedBars({ zones }) {
+  const maxSpeed = Math.max(1, ...zones.map((z) => z.avgSpeed));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {zones.map((z) => (
+        <div key={z.zoneId} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ width: '52px', flexShrink: 0, fontSize: '11px', fontWeight: '600', color: 'var(--color-ink)' }}>{z.zoneId.replace('ZONE_', '')}</span>
+          <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: 'var(--color-surface-dark-soft)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{
+              position: 'absolute', inset: 0, width: `${(z.avgSpeed / maxSpeed) * 100}%`, borderRadius: '4px',
+              background: CONGESTION_COLORS[z.status] || '#94a3b8', transition: 'width 0.4s ease',
+            }} />
+          </div>
+          <span style={{ width: '56px', flexShrink: 0, textAlign: 'right', fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: '700', color: 'var(--color-ink)' }}>{z.avgSpeed.toFixed(1)} km/h</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Approximate zone centroids — the same coordinates the sensor seed data
 // already uses (backend/src/routes/traffic.js), so this isn't a new
 // geocoding claim, just a label for where each zone's cluster sits.
@@ -346,21 +443,25 @@ export default function CommandCenter({ userSession, onNavigate }) {
           <div ref={mapCallbackRef} style={{ width: '100%', height: '360px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-hairline)' }} />
         </div>
 
-        <div className="panel-card">
-          <div className="panel-header" style={{ marginBottom: '8px' }}>
-            <div><span className="mono-eyebrow">CITY STATUS</span><h3 style={{ fontSize: '16px', fontWeight: '600' }}>Zone Overview</h3></div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {zoneList.map((z) => (
-              <div key={z.zoneId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-dark-soft)' }}>
-                <span style={{ fontSize: '12px', fontWeight: '600' }}>{z.zoneId.replace('ZONE_', '')}</span>
-                <span className={`status-badge ${z.status}`} style={{ fontSize: '10px' }}>{z.status}</span>
-              </div>
-            ))}
-            {zoneList.length === 0 && <p className="mono-label" style={{ fontSize: '12px' }}>No zone data available.</p>}
+        <div className="panel-card" style={{ justifyContent: 'space-between' }}>
+          <div>
+            <div className="panel-header" style={{ marginBottom: '10px' }}>
+              <div><span className="mono-eyebrow">CITY STATUS</span><h3 style={{ fontSize: '16px', fontWeight: '600' }}>Zone Distribution</h3></div>
+            </div>
+            {zoneList.length === 0 ? (
+              <p className="mono-label" style={{ fontSize: '12px' }}>No zone data available.</p>
+            ) : (
+              <>
+                <ZoneDonut zones={zoneList} />
+                <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--color-hairline)' }}>
+                  <span className="mono-label" style={{ fontSize: '10px', display: 'block', marginBottom: '10px' }}>AVG SPEED BY ZONE</span>
+                  <ZoneSpeedBars zones={zoneList} />
+                </div>
+              </>
+            )}
           </div>
           {worstZone && bestZone && (
-            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--color-hairline)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid var(--color-hairline)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
                 <span className="mono-label" style={{ fontSize: '10px' }}>WORST ZONE</span>
                 <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--status-severe)' }}>{worstZone.label} — {worstZone.avgSpeed.toFixed(1)} km/h</div>
