@@ -1,207 +1,198 @@
 # 🚦 TrafficVision AI — Namma Bengaluru Urban Mobility System
 
-> **Enterprise AI-Powered Traffic Prediction, Live GIS Route Optimization & Incident Command Platform**
+> **AI-Powered Traffic Prediction, Live GIS Route Optimization & Incident Command Platform**
+
+**Live Demo:** https://trafficvisionai.netlify.app/
+**Repository:** https://github.com/YashCube-x/Traffic-Prediction-AI-Power-WebApp
 
 ---
 
-## 📌 Executive Summary
+## 📌 Overview
 
-**TrafficVision AI** is an enterprise-grade, AI-driven urban traffic prediction and congestion optimization platform designed specifically for **Namma Bengaluru Urban Mobility**. By ingesting high-frequency IoT telemetry and real-time corridor metrics across major Bengaluru choke points (*Silk Board, Hebbal Flyover, Bellandur Outer Ring Road, Whitefield ITPB, M.G. Road, etc.*), TrafficVision AI delivers hyper-accurate travel time estimates, interactive GIS route optimization, and proactive incident command dispatch.
+TrafficVision AI is an AI-driven traffic prediction and congestion management platform built for Bengaluru, as part of the Infosys Springboard Internship. It combines a trained machine learning model, live traffic data from TomTom, incident-aware route rerouting, and a government-portal-style, multilingual public interface into one connected system.
 
----
-
-## 🏆 Project Milestones Status (Milestones 1-4 Completed)
-
-```
-[ MILESTONE 1: ARCHITECTURE & RBAC UI ] ➔ [ MILESTONE 2: BENGALURU AI ENGINE ] ➔ [ MILESTONE 3: SPLIT-SCREEN GIS ROUTER ] ➔ [ MILESTONE 4: INCIDENT COMMAND & ALERTS ]
-             🟢 COMPLETED                             🟢 COMPLETED                             🟢 COMPLETED                             🟢 COMPLETED
-```
-
-### 🟢 Milestone 1: Platform Topology, Microservices & RBAC UI System
-- **Microservices Topology**: Designed a scalable 3-tier architecture (React Vite Frontend + Express API Gateway + Python AI Engine).
-- **Role-Based Access Control (RBAC)**:
-  - **System Administrator (`admin@trafficvision.ai`)**: Full platform control, model retraining, and node configuration.
-  - **Traffic Operator (`operator@trafficvision.ai`)**: Real-time incident command logging, alert broadcasts, and resolution dispatch.
-  - **City Commuter (`user@trafficvision.ai`)**: Live GIS route optimization, instant hover ETA, and public emergency warning alerts.
-- **Theme Design System**: Flexible Light & Dark mode engine with custom CSS tokens, smooth transitions, and frosted glassmorphism elements.
-- **Sticky Fixed Navbar**: Permanently pinned top navigation header (`position: sticky; top: 0; z-index: 1000`) with glassmorphism blur (`backdrop-filter: blur(12px)`).
+This is a working demonstration platform, not an official government service — the landing page and footer disclose this clearly.
 
 ---
 
-### 🟢 Milestone 2: AI Forecasting Engine & Feature Engineering
-- **Bengaluru Mobility Dataset**: 3,500 simulated corridor telemetry records across 8 key Bengaluru choke points (see `generate_bengaluru_dataset.py` — this is a synthetic dataset, not live sensor data; treat accuracy numbers below as a validation of the pipeline, not a real-world benchmark).
-- **Algorithm Architecture**: **`GradientBoostingRegressor` (scikit-learn)** — a real Gradient Boosted Decision Tree ensemble (400 estimators, depth 3), trained in [`train_bengaluru_model.py`](train_bengaluru_model.py). Unlike a linear model, GBDTs learn feature interactions (e.g. rain × peak-hour × corridor-type) natively, without hand-built interaction terms.
-- **9 Engineered Features** (shared between training and live inference via [`ml_common.py`](ml_common.py)):
-  1. `hour` (0-23)
-  2. `day_of_week` (0-6)
-  3. `vehicle_count`
-  4. `historical_avg_speed_kmh`
-  5. `is_tech_corridor`
-  6. `rain_factor`
-  7. `is_tech_peak` (IT Corridor Peak Hours 8-11 AM & 5-9 PM)
-  8. `density_ratio` (vehicle count ÷ road capacity)
-  9. `is_weekend`
-- **Trained Model Performance Metrics** (held-out 20% test split, `random_state=42`):
-  - 📈 **MAE**: **0.26 km/h**
-  - 📉 **RMSE**: **0.33 km/h**
-  - 🎯 **R² Variance Score**: **99.73%**
-  - Re-run `python3 train_bengaluru_model.py` any time to regenerate these metrics from scratch.
-- **Live Inference**: The FastAPI endpoint (`backend/app/api/prediction.py`) loads the trained model from `backend/app/ml/bengaluru_gbdt_model.joblib` and runs a real `model.predict()` per request — it does not return static/hardcoded data. The Express gateway proxies `/api/v1/traffic/predictions` and `/api/v1/traffic/predict` straight through to it.
-- **Model Storage**: Trained model in `backend/app/ml/bengaluru_gbdt_model.joblib`; training metrics & the per-corridor hourly vehicle profile in `bengaluru_traffic_model.json`.
+## 🧩 What It Does
 
----
-
-### 🟢 Milestone 3: Interactive GIS Route Optimizer & Split-Screen Viewport
-- **3D Teardrop GPS Pin Markers**: Custom vector SVG 3D teardrop location pins (*Emerald Green START Pin* & *Crimson Red DESTINATION Pin*) with concentric ground ripple base rings and text badges.
-- **Instant Hover Popover Tooltips (`mouseover`)**: Hovering over any route polyline instantly displays a floating popover showing `Distance: 19.7 km`, `ETA: 28 mins`, and Route Title without needing to click.
-- **Browser-Style Taskbar Tabs & Split-Screen**: 50% left interactive GIS Leaflet OpenStreetMap viewport and 50% right route details panel featuring browser-style tabs (`[ Route 1 ★ RECOMMENDED ]`, `[ Route 2 ]`).
-- **Single-Row Input Search Bar**: `ORIGIN POINT`, `DESTINATION POINT`, and `⚡ OPTIMIZE ROUTE` button aligned on one horizontal row with quick preset pills (`BLR`, `HYD`, `DEL`).
-
----
-
-### 🟢 Milestone 4: Incident Control Command Center & Live Alerts
-- **Operator Incident Command (`AlertsManager.jsx`)**: Real-time traffic incident logging (`+ Log New Traffic Incident`), severity filtering (`CRITICAL`, `HIGH`, `MODERATE`, `INFO`), and resolution status toggling (`✓ Mark Resolved`).
-- **Public Emergency Alert Broadcast**: Active incidents generate a prominent red warning banner (`🚨 LIVE CITY TRAFFIC INCIDENT ALERT — +35 MINS DELAY`) at the top of the commuter Route Optimizer view.
-- **Dynamic AI Rerouting**: Alerts and route optimization share one in-memory store (`backend/src/store/alertsStore.js`). When an operator logs an incident, `POST /api/v1/routes/optimize` matches it against the route's road names, adds the alert's real delay penalty, escalates that route's congestion level, and re-picks whichever route now has the lowest ETA — verified live end-to-end (log an incident on a corridor → route recalculates and tags `affected_by_incident`; resolve it → the route returns to baseline).
-- **Fixed**: the documented demo `operator@trafficvision.ai` / `admin@trafficvision.ai` accounts could not actually log or resolve incidents — `verifyToken` was doing a Postgres lookup for accounts that only ever exist as JWT claims, never as DB rows, so every protected request 401'd with "User account not found." Demo accounts now authenticate straight from the token payload.
-- **Descoped**: "multi-agency signal override" (physically controlling real traffic signal hardware) isn't achievable from a software-only student project and has been dropped rather than left as an unfulfillable claim.
+- **Predicts traffic speed** using a real, trained `GradientBoostingRegressor` (scikit-learn) — not a hardcoded or static response.
+- **Optimizes routes live**, using TomTom's real traffic flow and routing APIs, with an hourly departure-time forecast.
+- **Reacts to incidents in real time** — a citizen's report updates a shared alert store, which recalculates affected routes and pushes the update to every open client instantly via Server-Sent Events (no page refresh).
+- **Supports 5 languages** — English, Hindi, Kannada, Tamil, and Malayalam — with persisted language choice and automatic browser-language detection.
+- **Includes citizen safety features** — a one-tap SOS button (shares live GPS location), a saved emergency contact, and direct-dial helpline numbers (Traffic Police 103, Emergency 112, Women's Helpline 181 / 1091).
+- **Scopes access by role and zone** — Admin, Operator, and Commuter roles, with operators scoped to a specific city zone (Central / North / South / East / West).
+- **Answers common questions** via a rule-based FAQ chatbot — no external AI API, no ongoing cost.
 
 ---
 
 ## 🏗️ System Architecture
 
 ```
-                                  +---------------------------------------+
-                                  |    React.js Frontend Portal (Vite)   |
-                                  |   (Glassmorphic & Sticky Top Navbar)  |
-                                  +-------------------+-------------------+
-                                                      |
-                                              (HTTP / REST API)
-                                                      |
-                                                      v
-                                  +---------------------------------------+
-                                  |       Express API Gateway            |
-                                  |     (Port 2001 - Routing & Auth)      |
-                                  +-------------------+-------------------+
-                                                      |
-                         +----------------------------+----------------------------+
-                         |                                                         |
-                         v                                                         v
-       +-----------------------------------+                     +-----------------------------------+
-       |     FastAPI / Python ML Engine    |    loads joblib     |  bengaluru_gbdt_model.joblib      |
-       |  (Port 8000 - live model.predict) | <------------------ |  (scikit-learn GBDT, 400 trees)   |
-       +-----------------------------------+                     +-----------------------------------+
+Browser Clients (Commuter · Operator · Admin)
+        |  HTTPS + JWT
+        v
+Express Gateway (auth + request routing)
+        |
+        +--------------------------+--------------------------+
+        |                                                     |
+        v                                                     v
+FastAPI ML Service                                  Route Optimizer <---> Alerts Store
+  loads trained model once                                |                    |
+        |                                            OSRM / TomTom      SSE Broadcast
+        v                                          (external routing)   /api/v1/events
+  GBDT Model (scikit-learn, joblib)                                          |
+   9 features -> speed (km/h)                                               v
+        |                                                          pushed live to all
+        +------------------------> Neon PostgreSQL <----------------- open clients
+                                (users · alerts · audit log)
 ```
+
+Predictions go through the left path (Gateway → FastAPI → GBDT model). Routing and incidents go through the right path (Gateway → Route Optimizer + Alerts Store → OSRM/TomTom), and any alert change is pushed straight back to every connected browser over Server-Sent Events — no polling, no manual refresh.
 
 ---
 
-## 🔌 API Endpoints Reference
+## 🧠 AI / ML Approach
 
-| Category | Method | Endpoint | Access Level | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| **Health** | `GET` | `/api/v1/health` | Public | System health check and online status |
-| **Auth** | `POST` | `/api/v1/auth/login` | Public | User authentication & JWT token issuance |
-| **Auth** | `GET` | `/api/v1/auth/me` | Authenticated | Fetch current user session & role |
-| **Routes** | `POST` | `/api/v1/routes/optimize` | All Roles | Calculate AI optimal GIS route & travel time |
-| **Prediction** | `GET` | `/api/v1/traffic/predictions` | All Roles | Live GBDT-model rolling 5-hour forecast for all corridors |
-| **Prediction** | `POST` | `/api/v1/traffic/predict` | All Roles | On-demand GBDT-model prediction for a given corridor/hour/day |
-| **Alerts** | `GET` | `/api/v1/alerts` | All Roles | Fetch live active city traffic incidents |
-| **Alerts** | `POST` | `/api/v1/alerts` | Operator / Admin | Log new emergency traffic incident |
-| **Alerts** | `PATCH` | `/api/v1/alerts/:id/resolve` | Operator / Admin | Mark traffic incident as resolved |
+- **Model**: `GradientBoostingRegressor` (scikit-learn), trained in [`train_bengaluru_model.py`](train_bengaluru_model.py).
+- **Dataset**: 3,500 simulated corridor-telemetry records across 8 Bengaluru choke points (generated by [`generate_bengaluru_dataset.py`](generate_bengaluru_dataset.py) — synthetic, not live sensor data; treat the metrics below as validation of the pipeline, not a real-world benchmark).
+- **9 engineered features** (shared between training and live inference via [`ml_common.py`](ml_common.py)): `hour`, `day_of_week`, `vehicle_count`, `historical_avg_speed_kmh`, `is_tech_corridor`, `rain_factor`, `is_tech_peak`, `density_ratio`, `is_weekend`.
+- **Held-out test split performance** (`random_state=42`): **MAE 0.26 km/h**, **RMSE 0.33 km/h**, **R² 99.73%**. Re-run `python3 train_bengaluru_model.py` at any time to regenerate these from scratch.
+- **Live inference**: `backend/app/api/prediction.py` loads the trained model from `backend/app/ml/bengaluru_gbdt_model.joblib` and runs `model.predict()` per request.
+
+---
+
+## 🗂️ Major Modules
+
+| Module | Description |
+| :--- | :--- |
+| **AI Traffic Prediction** | Live GBDT-model speed forecasting per corridor |
+| **GIS Route Optimizer** | Leaflet-based route comparison with live delay-aware re-ranking |
+| **Incident Command** | Citizen incident reporting → live alert store → automatic rerouting |
+| **Live Traffic Dashboard** | Real-time TomTom flow data and hourly departure forecasts |
+| **Admin & Operator Console** | Command Center, Sensor Management, Analytics, User Management, AI Model Control — zone-scoped |
+| **Safety Center** | SOS button, emergency contact, helpline directory |
+| **My Commute / My Reports** | Saved daily route with recommended departure time; citizen's own incident report history |
+| **FAQ Chatbot** | Rule-based assistant answering common platform questions |
+
+Access is role-based: **Admin** → full control · **Operator** → incident/sensor operations, scoped to their assigned zone · **Commuter** → routes, safety, and reporting.
+
+---
+
+## 🔌 Key API Endpoints
+
+| Category | Method | Endpoint | Description |
+| :--- | :--- | :--- | :--- |
+| Health | `GET` | `/api/v1/health` | System health check |
+| Auth | `POST` | `/api/v1/auth/login` | JWT authentication |
+| Prediction | `GET/POST` | `/api/v1/traffic/predict(ions)` | GBDT model inference |
+| Routes | `POST` | `/api/v1/routes/optimize` | Route calculation with live incident awareness |
+| Alerts | `GET/POST/PATCH` | `/api/v1/alerts` | Log, fetch, and resolve incidents |
+| Events | `GET` | `/api/v1/events` | Server-Sent Events stream for live updates |
+| Safety | various | `/api/v1/safety/*` | SOS, emergency contact, helplines |
+| Commute | various | `/api/v1/commute/*` | Saved commute and departure-time forecast |
+| Reports | various | `/api/v1/reports/*` | Citizen incident reports |
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React 18, Vite, Leaflet GIS, Lucide React Icons, Custom Vanilla CSS (Design Tokens, Glassmorphism, Tailwind utilities)
-- **Backend API**: Node.js, Express.js, CORS, Middleware JWT Auth
-- **AI & ML Pipeline**: Python, scikit-learn (`GradientBoostingRegressor`), NumPy, joblib
-- **Testing & Verification**: Playwright Automated UI Testing
+- **Frontend**: React 18, Vite, Leaflet (GIS), react-router-dom, react-i18next, Lucide icons
+- **Backend**: Node.js, Express.js, JWT auth, Server-Sent Events
+- **AI / ML**: Python, FastAPI, scikit-learn (`GradientBoostingRegressor`), NumPy, joblib
+- **Data / External services**: Neon PostgreSQL, TomTom Traffic & Routing API, OSRM, OpenStreetMap
+- **i18n**: i18next, react-i18next, i18next-browser-languagedetector (English, Hindi, Kannada, Tamil, Malayalam)
+- **Testing**: Playwright (automated browser verification)
 
 ---
 
-## 🚀 Quickstart & Local Setup Guide
+## 🚀 Quickstart & Local Setup
 
-### 1. Prerequisites
-- **Node.js**: v18.x or higher
-- **Python**: v3.10 or higher
+### Prerequisites
+- Node.js v18.x or higher
+- Python v3.10 or higher
 
-### 2. Unified One-Command Launch (Recommended)
-From the root project directory:
+### One-command launch
 ```bash
 python3 start.py
 ```
-> Starts both Express API Gateway (Port 2001) and Vite React Frontend (Port 2000).
+Starts the Express API Gateway (port 2001) and Vite React frontend (port 2000).
 
-### 3. Manual Step-by-Step Launch
+### Manual setup
 
-**Frontend (React Vite)**:
+**Frontend**
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev        # http://localhost:2000
 ```
-> Accessible at: `http://localhost:2000`
 
-**Backend API Gateway (Express)**:
+**Backend (Express gateway)**
 ```bash
 cd backend
 npm install
-npm start
+npm start           # http://localhost:2001
 ```
-> Accessible at: `http://localhost:2001`
 
 **Python AI Engine (FastAPI)** — required for real (non-fallback) predictions:
 ```bash
 cd backend
-python3 -m venv venv && source venv/bin/activate   # or venv/Scripts/activate on Windows
+python3 -m venv venv && source venv/bin/activate   # venv\Scripts\activate on Windows
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-> Accessible at: `http://localhost:8000/docs`. The Express gateway proxies `/api/v1/traffic/predictions` and `/api/v1/traffic/predict` to this service — if it isn't running, those endpoints return `503` and the frontend falls back to static demo data.
+Accessible at `http://localhost:8000/docs`. If this service isn't running, prediction endpoints return `503` and the frontend falls back to static demo data.
 
-**Train/Retrain the AI Model**:
+**Train / retrain the model**
 ```bash
-python3 generate_bengaluru_dataset.py   # regenerate the simulated dataset
-python3 train_bengaluru_model.py        # trains a real scikit-learn GBDT and saves it to backend/app/ml/
+python3 generate_bengaluru_dataset.py
+python3 train_bengaluru_model.py
 ```
+
+**Environment variables** — a TomTom API key is required for live traffic/routing data (`backend/.env`, see `backend/src/tomtom.js`); the app degrades to OSRM-only routing without one.
 
 ---
 
 ## 📁 Repository Structure
 
 ```
-Traffic_Prediction/
-├── bengaluru_traffic_data.csv        # 3,500 simulated Bengaluru telemetry records
-├── bengaluru_traffic_model.json       # Training metrics, feature importances & hourly vehicle profile
-├── ml_common.py                       # Shared feature engineering & corridor metadata (training + inference)
-├── generate_bengaluru_dataset.py      # Telemetry dataset generator
-├── train_bengaluru_model.py           # Trains the scikit-learn GBDT model
-├── start.py                            # Unified application launcher
+Traffic_Predication/
+├── bengaluru_traffic_data.csv        # Simulated Bengaluru telemetry dataset
+├── bengaluru_traffic_model.json      # Training metrics & feature importances
+├── ml_common.py                      # Shared feature engineering (training + inference)
+├── generate_bengaluru_dataset.py     # Dataset generator
+├── train_bengaluru_model.py          # Trains the scikit-learn GBDT model
+├── start.py                          # Unified application launcher
 ├── backend/
 │   ├── app/
-│   │   ├── ml/                         # bengaluru_gbdt_model.joblib (trained model, loaded at inference)
-│   │   └── api/prediction.py           # Live model.predict() endpoint (GET /predictions, POST /predict)
-│   ├── src/
-│   │   ├── routes/                     # Express API routers (alerts, auth, prediction, routes)
-│   │   └── index.js
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/                 # RouteOptimizer, AlertsManager, LandingPage, LoginPage
-│   │   ├── styles/                     # theme.css design system
-│   │   ├── App.jsx                     # Dashboard RBAC router & navigation
-│   │   └── main.jsx
-│   ├── package.json
-│   └── vite.config.js
-└── README.md
+│   │   ├── ml/                       # Trained model (.joblib)
+│   │   └── api/prediction.py         # Live model.predict() endpoint
+│   └── src/
+│       ├── routes/                   # alerts, auth, prediction, routes, safety, commute, reports, ...
+│       ├── middleware/auth.js        # JWT + RBAC middleware
+│       ├── store/alertsStore.js      # Shared in-memory/DB alert store
+│       ├── events.js                 # Server-Sent Events broadcast
+│       └── tomtom.js                 # TomTom API integration
+└── frontend/
+    └── src/
+        ├── components/               # RouteOptimizer, AlertsManager, CommandCenter, SafetyCenter, ...
+        ├── i18n/locales/             # en, hi, kn, ta, ml translations
+        ├── styles/theme.css          # Design tokens (light/dark)
+        └── App.jsx                   # RBAC-aware routing
 ```
 
 ---
 
-## 📋 Deliverable Verification Checklist
+## 📋 Milestone Status
 
-- [x] **Milestone 1**: System Architecture, Microservices Topology & Glassmorphic RBAC UI (100% Completed)
-- [x] **Milestone 2**: 9-Feature scikit-learn GBDT Model Trained & Live-Served (MAE 0.26 km/h, $R^2$ 99.73% on held-out test split) (100% Completed)
-- [x] **Milestone 3**: Interactive Leaflet GIS Map with 3D GPS Pins, Hover Tooltips & Browser Tabs (100% Completed)
-- [x] **Milestone 4**: Incident Control Command Center with Live Incident Logging, User Warning Banner & Alert-Aware AI Rerouting (100% Completed)
+- [x] **Milestone 1**: Platform architecture, RBAC UI, and design system
+- [x] **Milestone 2**: 9-feature scikit-learn GBDT model — trained and live-served (MAE 0.26 km/h, R² 99.73%)
+- [x] **Milestone 3**: Interactive Leaflet GIS route optimizer
+- [x] **Milestone 4**: Incident command center with live, alert-aware AI rerouting
+
+---
+
+## License
+
+MIT License (see [LICENSE](LICENSE)).
